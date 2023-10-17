@@ -2,6 +2,7 @@ import Ship from "../ship";
 import Gameboard from "../gameboard";
 import humanPlayer from "../humanPlayer";
 import aiPlayer from "../aiPlayer";
+import gameLoop from "../gameloop";
 
 describe("Ship", () => {
   let ship;
@@ -247,5 +248,40 @@ describe("aiPlayer", () => {
     expect(aiPlayerInstances.getSinkMode()).toBe(false);
     expect(aiPlayerInstances.getShipOrientation()).toBe(null);
     expect(aiPlayerInstances.getLastDirection()).toBe(null);
+  });
+});
+
+describe("gameLoop", () => {
+  let mainGameLoop;
+  beforeEach(() => {
+    mainGameLoop = gameLoop();
+  });
+
+  test("should initialize both gameboards", () => {
+    mainGameLoop.initializeGame();
+
+    expect(mainGameLoop.getHumanGameboard().getShips().length).toBe(5);
+    expect(mainGameLoop.getAiGameboard().getShips().length).toBe(5);
+  });
+
+  test("should change turn", () => {
+    mainGameLoop.changeTurn();
+    expect(mainGameLoop.gameState.currentPlayer).toBe("ai");
+    mainGameLoop.changeTurn();
+    expect(mainGameLoop.gameState.currentPlayer).toBe("human");
+  });
+
+  test("should set game over state", () => {
+    mainGameLoop.initializeGame();
+    mainGameLoop
+      .getHumanGameboard()
+      .getShips()
+      .forEach((ship) => {
+        for (let i = 0; i < ship.length; i += 1) {
+          ship.hit();
+        }
+      });
+    mainGameLoop.checkGameOver();
+    expect(mainGameLoop.gameState.isGameOver).toBe(true);
   });
 });
