@@ -1,7 +1,7 @@
 import Ship from "../ship";
 import Gameboard from "../gameboard";
 import humanPlayer from "../humanPlayer";
-import { experiments } from "webpack";
+import aiPlayer from "../aiPlayer";
 
 describe("Ship", () => {
   let ship;
@@ -138,5 +138,114 @@ describe("humanPlayer", () => {
     player.attackHuman(mockGameboard, coordinates);
 
     expect(mockGameboard.receiveAttack).toHaveBeenCalledWith(coordinates);
+  });
+});
+
+describe("aiPlayer", () => {
+  let aiPlayerInstances;
+  let mockGameboard;
+
+  beforeEach(() => {
+    aiPlayerInstances = aiPlayer();
+    mockGameboard = {
+      receiveAttack: jest.fn(),
+      reportAttack: jest.fn(),
+      isShipSunkAt: jest.fn(),
+    };
+  });
+
+  test("should attack adjacent cells after a hit", () => {
+    mockGameboard.reportAttack.mockReturnValueOnce("hit");
+    aiPlayerInstances.aiAttack(mockGameboard);
+    const firstMove = aiPlayerInstances.getMoves().slice(-1)[0];
+    mockGameboard.reportAttack.mockReturnValueOnce("miss");
+    aiPlayerInstances.aiAttack(mockGameboard);
+    const lastMove = aiPlayerInstances.getMoves().slice(-1)[0];
+
+    const adjacentCells = [
+      [firstMove[0] + 1, firstMove[1]],
+      [firstMove[0] - 1, firstMove[1]],
+      [firstMove[0], firstMove[1] + 1],
+      [firstMove[0], firstMove[1] - 1],
+    ];
+
+    expect(adjacentCells).toContainEqual(lastMove);
+  });
+
+  test("should determine the orientation of the ship after a second hit", () => {
+    mockGameboard.reportAttack
+      .mockReturnValueOnce("hit")
+      .mockReturnValueOnce("hit");
+
+    aiPlayerInstances.aiAttack(mockGameboard);
+    aiPlayerInstances.aiAttack(mockGameboard);
+
+    const orientation = aiPlayerInstances.getShipOrientation();
+    expect(orientation).toBeTruthy();
+  });
+
+  test("continue attacking in the determined orientation until a miss ans switch direction", () => {
+    mockGameboard.reportAttack
+      .mockReturnValueOnce("hit")
+      .mockReturnValueOnce("hit")
+      .mockReturnValueOnce("hit")
+      .mockReturnValueOnce("miss");
+
+    aiPlayerInstances.aiAttack(mockGameboard);
+    aiPlayerInstances.aiAttack(mockGameboard);
+
+    const initialOrientation = aiPlayerInstances.getShipOrientation();
+    const initialDirection = aiPlayerInstances.getLastDirection();
+
+    aiPlayerInstances.aiAttack(mockGameboard);
+
+    const orientationAfterThirdHit = aiPlayerInstances.getShipOrientation();
+    const directionAfterThirdHit = aiPlayerInstances.getLastDirection();
+
+    expect(orientationAfterThirdHit).toBe(initialOrientation);
+    expect(directionAfterThirdHit).toBe(initialDirection);
+
+    aiPlayerInstances.aiAttack(mockGameboard);
+
+    const orientationAfterMiss = aiPlayerInstances.getShipOrientation();
+    const directionAfterMiss = aiPlayerInstances.getLastDirection();
+
+    expect(orientationAfterMiss).toBe(initialOrientation);
+    expect(directionAfterMiss).not.toBe(initialDirection);
+  });
+
+  test("skip over already-hit coordinates when changing direction", () => {
+    mockGameboard.reportAttack
+      .mockReturnValueOnce("hit")
+      .mockReturnValueOnce("hit");
+
+    aiPlayerInstances.aiAttack(mockGameboard);
+    aiPlayerInstances.aiAttack(mockGameboard);
+
+    mockGameboard.reportAttack.mockReturnValueOnce("miss");
+
+    aiPlayerInstances.aiAttack(mockGameboard);
+
+    const nextTarget = aiPlayerInstances.generateTargetCoordinates();
+
+    expect(aiPlayerInstances.getMoves()).not.toContainEqual(nextTarget);
+  });
+
+  test("revert to random attacks after a sinking ship", () => {
+    // const randomSpy = jest.spyOn(
+    //   aiPlayerInstances,
+    //   "generateRandomCoordinates"
+    // );
+    mockGameboard.reportAttack.mockReturnValueOnce("hit");
+    mockGameboard.isShipSunkAt.mockReturnValueOnce(true);
+
+    aiPlayerInstances.aiAttack(mockGameboard);
+    aiPlayerInstances.aiAttack(mockGameboard);
+
+    // expect(randomSpy).toHaveBeenCalled();
+    expect(aiPlayerInstances.getLastHits()).toEqual([]);
+    expect(aiPlayerInstances.getSinkMode()).toBe(false);
+    expect(aiPlayerInstances.getShipOrientation()).toBe(null);
+    expect(aiPlayerInstances.getLastDirection()).toBe(null);
   });
 });
