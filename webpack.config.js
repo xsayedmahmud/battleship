@@ -6,11 +6,11 @@ const CopyWebpackPlugin = require("copy-webpack-plugin");
 module.exports = {
   mode: "development",
   entry: {
-    bundle: path.resolve(__dirname, "src/index.js"),
+    bundle: path.resolve(__dirname, "src/app.js"),
   },
   output: {
     path: path.resolve(__dirname, "dist"),
-    filename: "[name].[contenthash].js",
+    filename: "[name][contenthash].js",
     clean: true,
     assetModuleFilename: "[name][ext]",
   },
@@ -43,7 +43,7 @@ module.exports = {
       },
       {
         test: /\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$/i,
-        type: "asset-resource",
+        type: "asset/resource",
         generator: {
           filename: "assets/[name][ext]",
         },
@@ -61,13 +61,13 @@ module.exports = {
       template: "src/template.html",
     }),
     new BundleAnalyzerPlugin(),
-    new CopyWebpackPlugin({
-      patterns: [
-        {
-          from: "src/assets",
-          to: "assets",
-        },
-      ],
-    }),
+    // new CopyWebpackPlugin({
+    //   patterns: [
+    //     {
+    //       from: "src/assets",
+    //       to: "assets",
+    //     },
+    //   ],
+    // }),
   ],
 };

@@ -2,6 +2,9 @@ import aiPlayer from "./aiPlayer";
 import Gameboard from "./gameboard";
 import humanPlayer from "./humanPlayer";
 import Ship from "./ship";
+import { renderBoard } from "./domModule";
+
+const select = (selector) => document.querySelector(selector);
 
 const gameLoop = () => {
   let humanGameboard;
@@ -17,6 +20,9 @@ const gameLoop = () => {
     Ship(2, "patrolboat"),
   ];
 
+  const humanContainer = select(".human .game-container");
+  const aiContainer = select(".ai .game-container");
+
   const initializeGame = () => {
     humanGameboard = Gameboard();
     aiGameboard = Gameboard();
@@ -25,6 +31,8 @@ const gameLoop = () => {
 
     humanGameboard.placeRandomShips(humanGameboard, ships);
     aiGameboard.placeRandomShips(aiGameboard, ships);
+
+    renderBoard(humanContainer, aiContainer, humanGameboard, aiGameboard);
   };
 
   const gameState = {
