@@ -125,6 +125,170 @@ const Gameboard = () => {
     missedAttacks.length = 0;
   };
 
+  const isWithingDraggedShip = (
+    x,
+    y,
+    startX,
+    startY,
+    endX,
+    endY,
+    orientation
+  ) => {
+    if (orientation === "horizontal") {
+      return x === startX && y >= startY && y <= endY;
+    }
+    return y === startY && x >= startX && x <= endX;
+  };
+
+  const isValidRotation = (ship, [x, y], orientation) => {
+    const shipLength = ship.length;
+    const directions = [-1, 1];
+    let validPositions = [];
+
+    directions.some((direction) => {
+      const tempPositions = [];
+      for (let i = 0; i < shipLength; i++) {
+        const newX = x + (orientation === "vertical" ? i * direction : 0);
+        const newY = y + (orientation === "horizontal" ? i * direction : 0);
+
+        if (
+          newX >= 0 &&
+          newX < 10 &&
+          newY >= 0 &&
+          newY < 10 &&
+          (board[newX][newY] === null || board[newX][newY] === ship)
+        ) {
+          tempPositions.push([newX, newY]);
+        } else {
+          return false;
+        }
+      }
+
+      const isValid = tempPositions.every(([newX, newY]) => {
+        const surroundingCells = [
+          [newX, newY + 1],
+          [newX, newY - 1],
+          [newX + 1, newY],
+          [newX - 1, newY],
+          [newX + 1, newY + 1],
+          [newX + 1, newY - 1],
+          [newX - 1, newY + 1],
+          [newX - 1, newY - 1],
+        ];
+
+        return surroundingCells.every(
+          ([sx, sy]) =>
+            sx < 0 ||
+            sx >= 10 ||
+            sy < 0 ||
+            sy >= 10 ||
+            board[sx][sy] === null ||
+            board[sx][sy] === ship
+        );
+      });
+
+      if (isValid) {
+        validPositions = tempPositions;
+        return true;
+      }
+      return false;
+    });
+
+    return validPositions.length === shipLength ? validPositions : null;
+  };
+
+  const isValidDragPlacement = (cellsArray, startPos, endPos, orientation) => {
+    const [startX, startY] = startPos.split(",").map(Number);
+    const [endX, endY] = endPos.split(",").map(Number);
+
+    for (let i = 0; i < cellsArray.length; i++) {
+      const [x, y] = cellsArray[i].split(",").map(Number);
+
+      if (
+        checkCell(x, y) &&
+        !isWithingDraggedShip(x, y, startX, startY, endX, endY, orientation)
+      ) {
+        console.log("Invalid due to existing ship at", x, y);
+        return false;
+      }
+
+      const surroundingCells = [
+        [x, y + 1],
+        [x, y - 1],
+        [x + 1, y],
+        [x - 1, y],
+        [x + 1, y + 1],
+        [x + 1, y - 1],
+        [x - 1, y + 1],
+        [x - 1, y - 1],
+      ];
+
+      for (let j = 0; j < surroundingCells.length; j++) {
+        const [sx, sy] = surroundingCells[j];
+        if (
+          checkCell(sx, sy) &&
+          !isWithingDraggedShip(sx, sy, startX, startY, endX, endY, orientation)
+        ) {
+          console.log("invalid due to proximity to another ship at", sx, sy);
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
+  const placeShipDragAndDrop = (ship, [x, y], orientation) => {
+    let endX = x;
+    let endY = y;
+
+    if (orientation === "horizontal") {
+      endY = y + ship.length - 1;
+      if (endY >= 10) return false;
+    } else if (orientation === "vertical") {
+      endX = x + ship.length - 1;
+      if (endX >= 10) return false;
+    }
+
+    for (let i = 0; i < 10; i++) {
+      for (let j = 0; j < 10; j++) {
+        if (board[i][j] === ship) {
+          board[i][j] = null;
+        }
+      }
+    }
+
+    const shipIndex = ships.indexOf(ship);
+
+    if (shipIndex > -1) {
+      ships.splice(shipIndex, 1);
+      shipSegments.splice(shipIndex, 1);
+    }
+
+    if (orientation === "horizontal") {
+      for (let i = 0; i < ship.length; i++) {
+        board[x][y + i] = ship;
+      }
+      endY = y + ship.length - 1;
+    } else if (orientation === "vertical") {
+      for (let i = 0; i < ship.length; i++) {
+        board[x + i][y] = ship;
+      }
+      endX = x + ship.length - 1;
+    }
+
+    ships.push(ship);
+    shipSegments.push([
+      [x, y],
+      [endX, endY],
+    ]);
+
+    const shipImage = document.querySelector(`img[data-name="${ship.name}"]`);
+    shipImage.dataset.startPos = `${x},${y}`;
+    shipImage.dataset.endPos = `${endX},${endY}`;
+
+    return ships.includes(ship);
+  };
+
   const isAllShipSunk = () => ships.every((ship) => ship.isSunk());
   const getMissedAttacks = () => missedAttacks;
   const getHitAttacks = () => hitAttacks;
@@ -148,6 +312,9 @@ const Gameboard = () => {
     getShips,
     getShipSegments,
     isValidPlacement,
+    isValidDragPlacement,
+    placeShipDragAndDrop,
+    isValidRotation,
   };
 };
 
