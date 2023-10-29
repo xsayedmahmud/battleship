@@ -1,6 +1,5 @@
 import aiPlayer from "./aiPlayer";
 import Gameboard from "./gameboard";
-import humanPlayer from "./humanPlayer";
 import Ship from "./ship";
 import { renderBoard } from "./domModule";
 
@@ -9,16 +8,7 @@ const select = (selector) => document.querySelector(selector);
 const gameLoop = () => {
   let humanGameboard;
   let aiGameboard;
-  let human;
   let ai;
-
-  const ships = [
-    Ship(5, "carrier"),
-    Ship(4, "battleship"),
-    Ship(3, "destroyer"),
-    Ship(3, "submarine"),
-    Ship(2, "patrolboat"),
-  ];
 
   const humanContainer = select(".human .game-container");
   const aiContainer = select(".ai .game-container");
@@ -26,11 +16,25 @@ const gameLoop = () => {
   const initializeGame = () => {
     humanGameboard = Gameboard();
     aiGameboard = Gameboard();
-    human = humanPlayer();
     ai = aiPlayer();
+    const humanShips = [
+      Ship(5, "carrier"),
+      Ship(4, "battleship"),
+      Ship(3, "destroyer"),
+      Ship(3, "submarine"),
+      Ship(2, "patrolboat"),
+    ];
 
-    humanGameboard.placeRandomShips(humanGameboard, ships);
-    aiGameboard.placeRandomShips(aiGameboard, ships);
+    const aiShips = [
+      Ship(5, "carrier"),
+      Ship(4, "battleship"),
+      Ship(3, "destroyer"),
+      Ship(3, "submarine"),
+      Ship(2, "patrolboat"),
+    ];
+
+    humanGameboard.placeRandomShips(humanGameboard, humanShips);
+    aiGameboard.placeRandomShips(aiGameboard, aiShips);
 
     renderBoard(humanContainer, aiContainer, humanGameboard, aiGameboard);
   };
@@ -38,6 +42,12 @@ const gameLoop = () => {
   const gameState = {
     currentPlayer: "human",
     isGameOver: false,
+    lastAttackResult: null,
+    lastPlayer: null,
+    loggedShips: {
+      human: new Set(),
+      ai: new Set(),
+    },
   };
 
   const changeTurn = () => {
@@ -53,6 +63,7 @@ const gameLoop = () => {
 
   const getHumanGameboard = () => humanGameboard;
   const getAiGameboard = () => aiGameboard;
+  const getAi = () => ai;
 
   return {
     initializeGame,
@@ -61,6 +72,7 @@ const gameLoop = () => {
     gameState,
     changeTurn,
     checkGameOver,
+    getAi,
   };
 };
 

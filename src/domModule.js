@@ -123,16 +123,15 @@ const createGameContainer = (
       const shipImage = create("img");
       shipImage.src = imgSrc;
       shipImage.draggable = true;
-      shipImage.className = `ship ${ship.name} ${ship.length}`;
-      if (isAi) {
-        shipImage.className += " ai";
-        shipImage.style.opacity = 0;
-        shipImage.style.pointerEvents = "none";
-      }
+      shipImage.className = `ship ${isAi ? "ai-ship" : "human-ship"} ${
+        ship.name
+      } ${ship.length}`;
+
       shipImage.dataset.startPos = `${startX},${startY}`;
       shipImage.dataset.endPos = `${endX},${endY}`;
       shipImage.dataset.length = ship.length;
       shipImage.dataset.name = ship.name;
+
       shipImage.dataset.orientation = orientation;
       boardDiv.appendChild(shipImage);
       renderedShips.push(ship.name);
@@ -325,44 +324,65 @@ const handleDragLeave = (e) => {
   clearCellColors();
 };
 
-const addDragAndDropEvents = (boardDiv, humanGameBoard) => {
-  boardDiv.addEventListener("dragstart", (e) => {
+const eventHandlers = {
+  handleDragOverEvent: null,
+  handleDropEvent: null,
+  handleDoubleClick: null,
+
+  handleDragStartEvent: (e) => {
     if (e.target.classList.contains("ship")) {
       handleDragStart(e);
     }
-  });
+  },
 
-  boardDiv.addEventListener("dragover", (e) => {
-    if (e.target.classList.contains("cell")) {
-      handleDragOver(e, humanGameBoard);
-    }
-  });
-
-  boardDiv.addEventListener("dragleave", (e) => {
+  handleDragLeaveEvent: (e) => {
     if (e.target.classList.contains("cell")) {
       handleDragLeave(e);
     }
-  });
+  },
 
-  boardDiv.addEventListener("drop", (e) => {
-    if (e.target.classList.contains("cell")) {
-      handleDrop(e, humanGameBoard);
-
-      clearCellColors();
-    }
-  });
-
-  boardDiv.addEventListener("dragend", (e) => {
+  handleDragEndEvent: (e) => {
     if (e.target.classList.contains("ship")) {
       handleDragEnd(e);
     }
-  });
+  },
+};
 
-  boardDiv.addEventListener("dblclick", (e) => {
+const addDragAndDropEvents = (boardDiv, humanGameBoard) => {
+  eventHandlers.handleDragOverEvent = (e) => {
+    if (e.target.classList.contains("cell")) {
+      handleDragOver(e, humanGameBoard);
+    }
+  };
+
+  eventHandlers.handleDropEvent = (e) => {
+    if (e.target.classList.contains("cell")) {
+      handleDrop(e, humanGameBoard);
+      clearCellColors();
+    }
+  };
+
+  eventHandlers.handleDoubleClick = (e) => {
     if (e.target.classList.contains("ship")) {
       handleShipRotation(e, humanGameBoard);
     }
-  });
+  };
+
+  boardDiv.addEventListener("dragstart", eventHandlers.handleDragStartEvent);
+  boardDiv.addEventListener("dragover", eventHandlers.handleDragOverEvent);
+  boardDiv.addEventListener("dragleave", eventHandlers.handleDragLeaveEvent);
+  boardDiv.addEventListener("drop", eventHandlers.handleDropEvent);
+  boardDiv.addEventListener("dragend", eventHandlers.handleDragEndEvent);
+  boardDiv.addEventListener("dblclick", eventHandlers.handleDoubleClick);
+};
+
+const removeDragAndDropEvents = (boardDiv) => {
+  boardDiv.removeEventListener("dragstart", eventHandlers.handleDragStartEvent);
+  boardDiv.removeEventListener("dragover", eventHandlers.handleDragOverEvent);
+  boardDiv.removeEventListener("dragleave", eventHandlers.handleDragLeaveEvent);
+  boardDiv.removeEventListener("drop", eventHandlers.handleDropEvent);
+  boardDiv.removeEventListener("dragend", eventHandlers.handleDragEndEvent);
+  boardDiv.removeEventListener("dblclick", eventHandlers.handleDoubleClick);
 };
 
 const renderBoard = (
@@ -382,4 +402,9 @@ const renderBoard = (
   addDragAndDropEvents(humanBoardDiv, humanGameBoard);
 };
 
-export { renderBoard, adjustShipSizeAndPositions };
+export {
+  renderBoard,
+  adjustShipSizeAndPositions,
+  removeDragAndDropEvents,
+  addDragAndDropEvents,
+};

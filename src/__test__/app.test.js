@@ -1,6 +1,5 @@
 import Ship from "../ship";
 import Gameboard from "../gameboard";
-import humanPlayer from "../humanPlayer";
 import aiPlayer from "../aiPlayer";
 import gameLoop from "../gameloop";
 
@@ -125,20 +124,6 @@ describe("Gameboard", () => {
     placedShips.forEach((placedShip) => {
       expect(ships).toContainEqual(placedShip);
     });
-  });
-});
-
-describe("humanPlayer", () => {
-  test("execute an attack on human gameboard", () => {
-    const player = humanPlayer();
-    const mockGameboard = {
-      receiveAttack: jest.fn(),
-    };
-
-    const coordinates = [0, 0];
-    player.attackHuman(mockGameboard, coordinates);
-
-    expect(mockGameboard.receiveAttack).toHaveBeenCalledWith(coordinates);
   });
 });
 

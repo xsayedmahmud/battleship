@@ -197,6 +197,26 @@ const Gameboard = () => {
     return validPositions.length === shipLength ? validPositions : null;
   };
 
+  const getCellsOfSunkShips = () => {
+    const cellsOfSunkShips = [];
+    shipSegments.forEach(([start, end], index) => {
+      const ship = ships[index];
+
+      if (ship.isSunk()) {
+        const [startX, startY] = start;
+        const [endX, endY] = end;
+        const isHorizontal = startY !== endY;
+        for (let i = 0; i < ship.length; i++) {
+          const cell = isHorizontal
+            ? [startX, startY + i]
+            : [startX + i, startY];
+          cellsOfSunkShips.push(cell);
+        }
+      }
+    });
+    return cellsOfSunkShips;
+  };
+
   const isValidDragPlacement = (cellsArray, startPos, endPos, orientation) => {
     const [startX, startY] = startPos.split(",").map(Number);
     const [endX, endY] = endPos.split(",").map(Number);
@@ -315,6 +335,7 @@ const Gameboard = () => {
     isValidDragPlacement,
     placeShipDragAndDrop,
     isValidRotation,
+    getCellsOfSunkShips,
   };
 };
 

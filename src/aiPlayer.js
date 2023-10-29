@@ -4,9 +4,13 @@ const aiPlayer = () => {
   let sinkMode = false;
   let shipOrientation = null;
   let lastDirection = null;
+  let cellsToAvoid = [];
 
   const isCoordinatesInMoves = (x, y) =>
     moves.some(([moveX, moveY]) => moveX === x && moveY === y);
+
+  const isCellsToAvoid = (x, y) =>
+    cellsToAvoid.some(([avoidX, avoidY]) => avoidX === x && avoidY === y);
 
   const isValidCoordinates = (x, y) => x >= 0 && x < 10 && y >= 0 && y < 10;
 
@@ -21,13 +25,13 @@ const aiPlayer = () => {
       if (shipOrientation === "horizontal") {
         potentialTargets =
           lastDirection === "right"
-            ? [[lastX + 1, lastY]]
-            : [[lastX - 1, lastY]];
+            ? [[lastX, lastY + 1]]
+            : [[lastX, lastY - 1]];
       } else if (shipOrientation === "vertical") {
         potentialTargets =
           lastDirection === "down"
-            ? [[lastX, lastY + 1]]
-            : [[lastX, lastY - 1]];
+            ? [[lastX + 1, lastY]]
+            : [[lastX - 1, lastY]];
       }
     } else {
       potentialTargets = [
@@ -50,7 +54,7 @@ const aiPlayer = () => {
     do {
       x = Math.floor(Math.random() * 10);
       y = Math.floor(Math.random() * 10);
-    } while (isCoordinatesInMoves(x, y));
+    } while (isCoordinatesInMoves(x, y) || isCellsToAvoid(x, y));
 
     return [x, y];
   };
@@ -68,8 +72,52 @@ const aiPlayer = () => {
     );
 
     const target = potentialTargets.find(
-      ([x, y]) => isValidCoordinates(x, y) && !isCoordinatesInMoves(x, y)
+      ([x, y]) =>
+        isValidCoordinates(x, y) &&
+        !isCoordinatesInMoves(x, y) &&
+        !isCellsToAvoid(x, y)
     );
+
+    if (sinkMode && !target) {
+      const [newLastX, newLastY] = lastHits[0];
+      switch (lastDirection) {
+        case "right":
+          lastDirection = "left";
+          break;
+        case "left":
+          lastDirection = "right";
+          break;
+        case "down":
+          lastDirection = "up";
+          break;
+        case "up":
+          lastDirection = "down";
+          break;
+        default:
+          console.warn(`Unexpected value for lastDirection: ${lastDirection}`);
+          break;
+      }
+
+      const potentialTargetsOpposite = getPotentialTargets(
+        newLastX,
+        newLastY,
+        shipOrientation,
+        lastDirection
+      );
+
+      const targetOpposite = potentialTargetsOpposite.find(
+        ([x, y]) =>
+          isValidCoordinates(x, y) &&
+          !isCoordinatesInMoves(x, y) &&
+          !isCellsToAvoid(x, y)
+      );
+
+      if (targetOpposite) {
+        lastHits.unshift(targetOpposite);
+      }
+
+      return targetOpposite || generateRandomCoordinates();
+    }
 
     return target || generateRandomCoordinates();
   };
@@ -92,24 +140,6 @@ const aiPlayer = () => {
         }
       }
       sinkMode = true;
-    } else if (sinkMode) {
-      switch (lastDirection) {
-        case "right":
-          lastDirection = "left";
-          break;
-        case "left":
-          lastDirection = "right";
-          break;
-        case "down":
-          lastDirection = "up";
-          break;
-        case "up":
-          lastDirection = "down";
-          break;
-        default:
-          console.warn(`Unexpected value for lastDirection: ${lastDirection}`);
-          break;
-      }
     }
 
     if (gameboard.isShipSunkAt(coordinates)) {
@@ -117,6 +147,33 @@ const aiPlayer = () => {
       sinkMode = false;
       shipOrientation = null;
       lastDirection = null;
+
+      const sunkShipCells = gameboard.getCellsOfSunkShips();
+
+      sunkShipCells.forEach(([x, y]) => {
+        const surroundingCells = [
+          [x, y + 1],
+          [x, y - 1],
+          [x + 1, y],
+          [x - 1, y],
+          [x + 1, y + 1],
+          [x + 1, y - 1],
+          [x - 1, y + 1],
+          [x - 1, y - 1],
+        ];
+
+        surroundingCells.forEach(([sx, sy]) => {
+          if (
+            sx >= 0 &&
+            sx < 10 &&
+            sy >= 0 &&
+            sy < 10 &&
+            !moves.some(([mx, my]) => mx === sx && my === sy)
+          ) {
+            cellsToAvoid.push([sx, sy]);
+          }
+        });
+      });
     }
   };
 
