@@ -1,7 +1,6 @@
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const { BundleAnalyzerPlugin } = require("webpack-bundle-analyzer");
-const CopyWebpackPlugin = require("copy-webpack-plugin");
 
 module.exports = {
   mode: "development",
@@ -51,6 +50,7 @@ module.exports = {
       {
         test: /\.html$/,
         use: ["html-loader"],
+        exclude: path.resolve(__dirname, "src/template.html"),
       },
     ],
   },
@@ -61,13 +61,5 @@ module.exports = {
       template: "src/template.html",
     }),
     new BundleAnalyzerPlugin(),
-    // new CopyWebpackPlugin({
-    //   patterns: [
-    //     {
-    //       from: "src/assets",
-    //       to: "assets",
-    //     },
-    //   ],
-    // }),
   ],
 };
