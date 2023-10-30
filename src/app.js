@@ -6,6 +6,8 @@ import {
 import gameLoop from "./gameloop";
 import missEffect from "./assets/miss.mp3";
 import hitEffect from "./assets/hit.mp3";
+import soundOnIcon from "./assets/sound-on.svg";
+import soundOffIcon from "./assets/sound-off.svg";
 
 const select = (selector) => document.querySelector(selector);
 const create = (element) => document.createElement(element);
@@ -64,7 +66,7 @@ const soundBtn = select(".sound");
 
 soundBtn.addEventListener("click", () => {
   soundOn = !soundOn;
-  soundBtn.src = soundOn ? "./assets/sound-on.svg" : "./assets/sound-off.svg";
+  soundBtn.src = soundOn ? soundOnIcon : soundOffIcon;
 });
 
 const playSound = (effect) => {
