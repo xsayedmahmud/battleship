@@ -37,15 +37,28 @@ const gameLog = JSON.parse(localStorage.getItem("gameLog")) || {
   aiWins: 0,
   lastWinner: null,
   totalGames: 0,
+  updated: false,
+};
+
+const updateGameLog = () => {
+  const humanLog = select(".humanLog");
+  const aiLog = select(".aiLog");
+  const lastRound = select(".lastRound");
+
+  humanLog.textContent = `You: ${gameLog.humanWins}/${gameLog.totalGames}`;
+  aiLog.textContent = `Ai: ${gameLog.aiWins}/${gameLog.totalGames}`;
+  lastRound.textContent = gameLog.lastWinner
+    ? `${gameLog.lastWinner} won the last round.`
+    : "No games played yet.";
 };
 
 const gameInstances = gameLoop();
 gameInstances.initializeGame();
+
 const gameOverModal = select("#gameOverModal");
 const winnerMessage = select("#winnerMessage");
 const playAgainButton = select("#playAgain");
 const closeBtn = select("#close-btn");
-
 let soundOn = true;
 const soundBtn = select(".sound");
 
@@ -64,17 +77,6 @@ const playSound = (effect) => {
 const capitalizeFirstLetter = (str) =>
   str.charAt(0).toUpperCase() + str.slice(1);
 
-const updateGameLog = () => {
-  const humanLog = select(".humanLog");
-  const aiLog = select(".aiLog");
-  const lastRound = select(".lastRound");
-
-  humanLog.textContent = `You: ${gameLog.humanWins}/${gameLog.totalGames}`;
-  aiLog.textContent = `Ai: ${gameLog.aiWins}/${gameLog.totalGames}`;
-  lastRound.textContent = gameLog.lastWinner
-    ? `${gameLog.lastWinner} won the last round.`
-    : "No games played yet.";
-};
 const gameStateText = select(".gameMsg");
 
 const updateGameState = () => {
@@ -163,11 +165,13 @@ const startGame = () => {
       e.target.classList.add(result === "hit" ? "hit" : "miss");
       gameInstances.gameState.lastAttackResult = result;
       gameInstances.gameState.lastPlayer = "human";
-      gameInstances.changeTurn();
       gameInstances.checkGameOver();
+      gameInstances.changeTurn();
       updateGameState();
       aiBoard.removeEventListener("click", humanTurn);
-      setTimeout(aiTurn, 2000);
+      if (!gameInstances.gameState.isGameOver) {
+        setTimeout(aiTurn, 200);
+      }
     }
   };
 
@@ -180,8 +184,9 @@ const startGame = () => {
     playSound(result === "hit" ? hitEffect : missEffect);
     gameInstances.gameState.lastAttackResult = result;
     gameInstances.gameState.lastPlayer = "ai";
-    gameInstances.changeTurn();
+
     gameInstances.checkGameOver();
+    gameInstances.changeTurn();
     updateGameState();
     if (!gameInstances.gameState.isGameOver) {
       aiBoard.addEventListener("click", humanTurn);
@@ -192,7 +197,7 @@ const startGame = () => {
     if (gameInstances.gameState.currentPlayer === "human") {
       aiBoard.addEventListener("click", humanTurn);
     } else {
-      setTimeout(aiTurn, 2000);
+      setTimeout(aiTurn, 200);
     }
   }
 };
@@ -233,6 +238,7 @@ playAgainButton.addEventListener("click", () => {
 });
 
 closeBtn.addEventListener("click", () => {
+  gameOverModal.style.display = "none";
   startButton.click();
 });
 

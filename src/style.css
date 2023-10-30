@@ -226,7 +226,7 @@ h2 {
 }
 
 .ship.ai-ship {
-  opacity: 0;
+  /* opacity: 0; */
   pointer-events: none;
 }
 .ship.ai-ship.sink {
@@ -322,9 +322,7 @@ h2 {
   background: hotpink;
   transition: width 0.3s ease;
 }
-.dragging {
-  pointer-events: none;
-}
+
 .options button::before {
   top: 0;
   left: 0;
@@ -479,5 +477,18 @@ h2 {
   }
   .gameStatus h2 {
     order: 2;
+  }
+}
+
+@media (hover: none) {
+  .options button::before,
+  .options button::after {
+    content: none;
+  }
+
+  .options button:focus {
+    box-shadow: 4px 4px 6px rgba(116, 125, 136, 0.5),
+      -4px -4px 6px rgba(255, 255, 255, 0.5);
+    transform: box-shadow 0.3s ease;
   }
 }
