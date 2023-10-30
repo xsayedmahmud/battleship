@@ -75,9 +75,9 @@ const updateGameLog = () => {
     ? `${gameLog.lastWinner} won the last round.`
     : "No games played yet.";
 };
+const gameStateText = select(".gameMsg");
 
 const updateGameState = () => {
-  const gameStateText = select(".gameMsg");
   const humanGameBoard = gameInstances.getHumanGameboard();
   const aiGameBoard = gameInstances.getAiGameboard();
   const shipLog = select(".ship-log ol");
@@ -126,17 +126,17 @@ const updateGameState = () => {
     if (humanGameBoard.isAllShipSunk()) {
       winner = "AI";
       gameLog.aiWins++;
+      message = `Game over. AI wins!`;
     } else if (aiGameBoard.isAllShipSunk()) {
-      winner = "human";
+      winner = "You";
       gameLog.humanWins++;
+      message = `Game over. You won!`;
     }
 
-    console.log("Game is over, winner is:", winner);
     gameLog.lastWinner = winner;
     gameLog.totalGames++;
     localStorage.setItem("gameLog", JSON.stringify(gameLog));
     updateGameLog();
-    message = `Game over. ${winner} Wins!`;
     winnerMessage.textContent = message;
     gameOverModal.style.display = "block";
   }
@@ -212,23 +212,23 @@ startButton.addEventListener("click", () => {
     removeDragAndDropEvents(boardDiv);
     randomizeButton.disabled = true;
     startButton.textContent = "Reset";
-
     startGame();
   } else if (startButton.dataset.action === "reset") {
     startButton.dataset.action = "start";
     randomizeButton.disabled = false;
-    startButton.textContent = "Start ▶";
+    startButton.textContent = "Start";
     humanContainer.innerHTML = "";
     aiContainer.innerHTML = "";
+    const shipLog = select(".ship-log ol");
+    shipLog.innerHTML = "";
+    select(".ship-log").style.display = "none";
+    gameStateText.textContent = "Arrange the ships.";
     gameInstances.initializeGame();
   }
 });
 
 playAgainButton.addEventListener("click", () => {
   gameOverModal.style.display = "none";
-  gameOverModal.style.display = "none";
-  const shipLog = select(".ship-log ol");
-  shipLog.innerHTML = "";
   startButton.click();
 });
 

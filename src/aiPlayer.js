@@ -54,7 +54,11 @@ const aiPlayer = () => {
     do {
       x = Math.floor(Math.random() * 10);
       y = Math.floor(Math.random() * 10);
-    } while (isCoordinatesInMoves(x, y) || isCellsToAvoid(x, y));
+    } while (
+      (x + y) % 2 !== 0 ||
+      isCoordinatesInMoves(x, y) ||
+      isCellsToAvoid(x, y)
+    );
 
     return [x, y];
   };

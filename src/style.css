@@ -65,6 +65,23 @@ h6 {
 body {
   margin: 0;
   padding: 0;
+  overflow-y: scroll;
+}
+body::-webkit-scrollbar {
+  width: 12px;
+}
+
+body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+body::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 20px;
+}
+
+body::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 
 main {
@@ -245,23 +262,23 @@ h2 {
 .cell.hit::after {
   content: "";
   display: block;
-  width: 25%;
-  height: 25%;
-  background-color: red;
+  width: 2px;
+  height: 100%;
+  background-color: var(--land);
   border-radius: 50%;
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  /* z-index: 2; */
+  z-index: 2;
 }
 
-/* .cell.hit::before {
+.cell.hit::before {
   transform: translate(-50%, -50%) rotate(45deg);
 }
 .cell.hit::after {
   transform: translate(-50%, -50%) rotate(-45deg);
-} */
+}
 
 .human,
 .ai {
@@ -294,8 +311,6 @@ h2 {
   display: inline-block;
   outline: none;
   box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
-  /* transition: all 0.3s ease, box-shadow 0.3s ease, width 0.2s ease,
-    background 0.3s ease; */
 }
 
 .options button::before,
@@ -363,7 +378,7 @@ h2 {
 .modal {
   display: none;
   position: fixed;
-  z-index: 1;
+  z-index: 3;
   left: 0;
   top: 0;
   width: 100%;
