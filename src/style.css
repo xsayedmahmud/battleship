@@ -117,9 +117,18 @@ header {
   background: white;
 }
 
+.intro p {
+  font-size: clamp(1rem, 1vw, 1.3rem);
+}
 .wiki-link {
-  text-decoration: none;
+  /* text-decoration: none; */
   cursor: pointer;
+  font-weight: 600;
+  color: #ff6b6b;
+}
+
+.wiki-link:hover {
+  text-decoration: none;
 }
 
 .container {
