@@ -2383,7 +2383,7 @@ var startGame = function startGame() {
       updateGameState();
       aiBoard.removeEventListener("click", humanTurn);
       if (!gameInstances.gameState.isGameOver) {
-        setTimeout(aiTurn, 200);
+        setTimeout(aiTurn, 2000);
       }
     }
   };
@@ -2407,7 +2407,7 @@ var startGame = function startGame() {
     if (gameInstances.gameState.currentPlayer === "human") {
       aiBoard.addEventListener("click", humanTurn);
     } else {
-      setTimeout(aiTurn, 200);
+      setTimeout(aiTurn, 2000);
     }
   } else {
     aiBoard.removeEventListener("click", humanTurn);
@@ -2456,4 +2456,4 @@ updateGameLog();
 
 /******/ })()
 ;
-//# sourceMappingURL=bundleb240548d2ebc1a79c64a.js.map
+//# sourceMappingURL=bundle644d207dfd1513656793.js.map
