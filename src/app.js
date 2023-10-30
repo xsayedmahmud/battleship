@@ -172,7 +172,7 @@ const startGame = () => {
       updateGameState();
       aiBoard.removeEventListener("click", humanTurn);
       if (!gameInstances.gameState.isGameOver) {
-        setTimeout(aiTurn, 200);
+        setTimeout(aiTurn, 2000);
       }
     }
   };
@@ -199,7 +199,7 @@ const startGame = () => {
     if (gameInstances.gameState.currentPlayer === "human") {
       aiBoard.addEventListener("click", humanTurn);
     } else {
-      setTimeout(aiTurn, 200);
+      setTimeout(aiTurn, 2000);
     }
   } else {
     aiBoard.removeEventListener("click", humanTurn);

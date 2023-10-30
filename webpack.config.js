@@ -50,7 +50,6 @@ module.exports = {
       {
         test: /\.html$/,
         use: ["html-loader"],
-        exclude: path.resolve(__dirname, "src/template.html"),
       },
     ],
   },
