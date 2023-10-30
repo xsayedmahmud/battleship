@@ -13,6 +13,17 @@ const gameLoop = () => {
   const humanContainer = select(".human .game-container");
   const aiContainer = select(".ai .game-container");
 
+  const gameState = {
+    currentPlayer: "human",
+    isGameOver: false,
+    lastAttackResult: null,
+    lastPlayer: null,
+    loggedShips: {
+      human: new Set(),
+      ai: new Set(),
+    },
+  };
+
   const initializeGame = () => {
     humanGameboard = Gameboard();
     aiGameboard = Gameboard();
@@ -37,17 +48,15 @@ const gameLoop = () => {
     aiGameboard.placeRandomShips(aiGameboard, aiShips);
 
     renderBoard(humanContainer, aiContainer, humanGameboard, aiGameboard);
-  };
 
-  const gameState = {
-    currentPlayer: "human",
-    isGameOver: false,
-    lastAttackResult: null,
-    lastPlayer: null,
-    loggedShips: {
+    gameState.currentPlayer = "human";
+    gameState.isGameOver = false;
+    gameState.lastAttackResult = null;
+    gameState.lastPlayer = null;
+    gameState.loggedShips = {
       human: new Set(),
       ai: new Set(),
-    },
+    };
   };
 
   const changeTurn = () => {

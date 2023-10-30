@@ -199,16 +199,21 @@ const startGame = () => {
     } else {
       setTimeout(aiTurn, 200);
     }
+  } else {
+    aiBoard.removeEventListener("click", humanTurn);
   }
 };
 
+const humanContainer = select(".human .game-container");
+const aiContainer = select(".ai .game-container");
+
 const randomizeButton = select(".randomize");
 randomizeButton.addEventListener("click", () => {
+  humanContainer.innerHTML = "";
+  aiContainer.innerHTML = "";
   gameInstances.initializeGame();
 });
 
-const humanContainer = select(".human .game-container");
-const aiContainer = select(".ai .game-container");
 const startButton = select(".start-reset");
 startButton.addEventListener("click", () => {
   if (startButton.dataset.action === "start") {
