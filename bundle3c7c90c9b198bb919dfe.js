@@ -200,8 +200,10 @@ var aiPlayer = function aiPlayer() {
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   addDragAndDropEvents: () => (/* binding */ addDragAndDropEvents),
+/* harmony export */   addTouchEvents: () => (/* binding */ addTouchEvents),
 /* harmony export */   adjustShipSizeAndPositions: () => (/* binding */ adjustShipSizeAndPositions),
 /* harmony export */   removeDragAndDropEvents: () => (/* binding */ removeDragAndDropEvents),
+/* harmony export */   removeTouchEvents: () => (/* binding */ removeTouchEvents),
 /* harmony export */   renderBoard: () => (/* binding */ renderBoard)
 /* harmony export */ });
 /* harmony import */ var _assets_carrier_5_v_svg__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./assets/carrier-5-v.svg */ "./src/assets/carrier-5-v.svg");
@@ -303,17 +305,11 @@ var createGameContainer = function createGameContainer(gameboard, container, ren
   var boardDiv = create("div");
   boardDiv.className = "board";
   for (var x = 0; x < 10; x++) {
-    var _loop = function _loop() {
+    for (var y = 0; y < 10; y++) {
       var cellElement = create("div");
       cellElement.className = "cell";
       cellElement.dataset.pos = "".concat(x, ",").concat(y);
       boardDiv.appendChild(cellElement);
-      cellElement.addEventListener("click", function () {
-        console.log(cellElement.dataset.pos);
-      });
-    };
-    for (var y = 0; y < 10; y++) {
-      _loop();
     }
   }
   container.appendChild(boardDiv);
@@ -392,6 +388,39 @@ var handleShipRotation = function handleShipRotation(e, humanGameBoard) {
 };
 var currentDragData = null;
 var dragging = false;
+var handleTouchStart = function handleTouchStart(e, humanGameBoard) {
+  var ship = e.target;
+  var touch = e.touches[0];
+  dragging = true;
+  var rect = ship.getBoundingClientRect();
+  var offsetX = touch.clientX - rect.left;
+  var offsetY = touch.clientY - rect.top;
+  var grabPointX = Math.floor(offsetX / rect.width * ship.dataset.length);
+  var grabPointY = Math.floor(offsetY / rect.height * ship.dataset.length);
+  currentDragData = {
+    shipName: ship.dataset.name,
+    shipLength: ship.dataset.length,
+    orientation: ship.dataset.orientation,
+    startPos: ship.dataset.startPos,
+    endPos: ship.dataset.endPos,
+    grabPointX: grabPointX,
+    grabPointY: grabPointY
+  };
+  var allShips = selectAll(".ship");
+  setTimeout(function () {
+    if (dragging) {
+      allShips.forEach(function (shipElm) {
+        shipElm.style.pointerEvents = "none";
+      });
+    }
+  }, 0);
+  var longPressTimer = setTimeout(function () {
+    handleShipRotation(e, humanGameBoard);
+  }, 1000);
+  ship.addEventListener("touchend", function () {
+    clearTimeout(longPressTimer);
+  });
+};
 var handleDragStart = function handleDragStart(e) {
   var ship = e.target;
   dragging = true;
@@ -417,6 +446,55 @@ var handleDragStart = function handleDragStart(e) {
       });
     }
   }, 0);
+};
+var touchData;
+var handleTouchMove = function handleTouchMove(e, humanGameBoard) {
+  e.preventDefault();
+  selectAll(".cell").forEach(function (cell) {
+    cell.style.backgroundColor = "";
+  });
+  var touchX = e.touches[0].clientX;
+  var touchY = e.touches[0].clientY;
+  var cellElement = document.elementFromPoint(touchX, touchY);
+  var cellsToHighlight = [];
+  var isValid = false;
+  if (cellElement && cellElement.classList.contains("cell")) {
+    var _cellElement$dataset$ = cellElement.dataset.pos.split(",").map(Number),
+      _cellElement$dataset$2 = _slicedToArray(_cellElement$dataset$, 2),
+      hoverX = _cellElement$dataset$2[0],
+      hoverY = _cellElement$dataset$2[1];
+    var draggedData = currentDragData || {};
+    var shipLength = draggedData.shipLength,
+      orientation = draggedData.orientation,
+      grabPointX = draggedData.grabPointX,
+      grabPointY = draggedData.grabPointY,
+      startPos = draggedData.startPos,
+      endPos = draggedData.endPos;
+    for (var i = 0; i < shipLength; i++) {
+      var dataPos = void 0;
+      if (orientation === "horizontal") {
+        dataPos = "".concat(hoverX, ",").concat(hoverY - grabPointX + i);
+      } else {
+        dataPos = "".concat(hoverX - grabPointY + i, ",").concat(hoverY);
+      }
+      var cell = select("[data-pos=\"".concat(dataPos, "\"]"));
+      if (cell) {
+        cellsToHighlight.push(cell);
+      }
+    }
+    isValid = humanGameBoard.isValidDragPlacement(cellsToHighlight.filter(Boolean).map(function (cell) {
+      return cell.dataset.pos;
+    }), startPos, endPos, orientation);
+    cellsToHighlight.forEach(function (cell) {
+      if (cell) {
+        cell.style.backgroundColor = isValid ? "green" : "red";
+      }
+    });
+  }
+  touchData = {
+    cellsToHighlight: cellsToHighlight || [],
+    isValid: isValid || false
+  };
 };
 var handleDragOver = function handleDragOver(e, humanGameBoard) {
   e.preventDefault();
@@ -460,8 +538,7 @@ var handleDragOver = function handleDragOver(e, humanGameBoard) {
     isValid: isValid
   };
 };
-var handleDrop = function handleDrop(e, humanGameBoard) {
-  e.preventDefault();
+var handleTouchEnd = function handleTouchEnd(e, humanGameBoard) {
   var draggedData = currentDragData || {};
   var orientation = draggedData.orientation,
     startPos = draggedData.startPos;
@@ -469,6 +546,42 @@ var handleDrop = function handleDrop(e, humanGameBoard) {
     _startPos$split$map4 = _slicedToArray(_startPos$split$map3, 2),
     startX = _startPos$split$map4[0],
     startY = _startPos$split$map4[1];
+  var ship = humanGameBoard.getShipAt([startX, startY]);
+  var touchX = e.changedTouches[0].clientX;
+  var touchY = e.changedTouches[0].clientY;
+  var cellElement = document.elementFromPoint(touchX, touchY);
+  if (cellElement && cellElement.classList.contains("cell")) {
+    if (touchData) {
+      if (touchData.isValid) {
+        var _touchData$cellsToHig = touchData.cellsToHighlight[0].dataset.pos.split(",").map(Number),
+          _touchData$cellsToHig2 = _slicedToArray(_touchData$cellsToHig, 2),
+          x = _touchData$cellsToHig2[0],
+          y = _touchData$cellsToHig2[1];
+        var success = humanGameBoard.placeShipDragAndDrop(ship, [x, y], orientation);
+        if (success) {
+          adjustShipSizeAndPositions();
+        } else {
+          console.log("Failed to place ship at ".concat(x, ", ").concat(y));
+        }
+      }
+    }
+  }
+  clearCellColors();
+  dragging = false;
+  var allShips = selectAll(".ship");
+  allShips.forEach(function (shipElm) {
+    shipElm.style.pointerEvents = "";
+  });
+};
+var handleDrop = function handleDrop(e, humanGameBoard) {
+  e.preventDefault();
+  var draggedData = currentDragData || {};
+  var orientation = draggedData.orientation,
+    startPos = draggedData.startPos;
+  var _startPos$split$map5 = startPos.split(",").map(Number),
+    _startPos$split$map6 = _slicedToArray(_startPos$split$map5, 2),
+    startX = _startPos$split$map6[0],
+    startY = _startPos$split$map6[1];
   var ship = humanGameBoard.getShipAt([startX, startY]);
   var dropData = handleDragOver(e, humanGameBoard);
   if (dropData.isValid) {
@@ -521,6 +634,31 @@ var eventHandlers = {
     }
   }
 };
+var touchEventHandlers = {
+  handleTouchStartEvent: null,
+  handleTouchMoveEvent: null,
+  handleTouchEndEvent: null
+};
+var addTouchEvents = function addTouchEvents(boardDiv, humanGameBoard) {
+  touchEventHandlers.handleTouchStartEvent = function (e) {
+    if (e.target.classList.contains("ship")) {
+      handleTouchStart(e, humanGameBoard);
+    }
+  };
+  touchEventHandlers.handleTouchMoveEvent = function (e) {
+    if (e.target.classList.contains("cell")) {
+      handleTouchMove(e, humanGameBoard);
+    }
+  };
+  touchEventHandlers.handleTouchEndEvent = function (e) {
+    if (e.target.classList.contains("cell")) {
+      handleTouchEnd(e, humanGameBoard);
+    }
+  };
+  boardDiv.addEventListener("touchstart", touchEventHandlers.handleTouchStartEvent);
+  boardDiv.addEventListener("touchmove", touchEventHandlers.handleTouchMoveEvent);
+  boardDiv.addEventListener("touchend", touchEventHandlers.handleTouchEndEvent);
+};
 var addDragAndDropEvents = function addDragAndDropEvents(boardDiv, humanGameBoard) {
   eventHandlers.handleDragOverEvent = function (e) {
     if (e.target.classList.contains("cell")) {
@@ -553,6 +691,11 @@ var removeDragAndDropEvents = function removeDragAndDropEvents(boardDiv) {
   boardDiv.removeEventListener("dragend", eventHandlers.handleDragEndEvent);
   boardDiv.removeEventListener("dblclick", eventHandlers.handleDoubleClick);
 };
+var removeTouchEvents = function removeTouchEvents(boardDiv) {
+  boardDiv.removeEventListener("touchstart", touchEventHandlers.handleTouchStartEvent);
+  boardDiv.removeEventListener("touchmove", touchEventHandlers.handleTouchMoveEvent);
+  boardDiv.removeEventListener("touchend", touchEventHandlers.handleTouchEndEvent);
+};
 var renderBoard = function renderBoard(humanContainer, aiContainer, humanGameBoard, aiGameBoard) {
   var renderedShipsHuman = [];
   var renderedShipsAI = [];
@@ -560,6 +703,7 @@ var renderBoard = function renderBoard(humanContainer, aiContainer, humanGameBoa
   createGameContainer(aiGameBoard, aiContainer, renderedShipsAI, true);
   var humanBoardDiv = select(".human .board");
   addDragAndDropEvents(humanBoardDiv, humanGameBoard);
+  addTouchEvents(humanBoardDiv, humanGameBoard);
 };
 
 
@@ -1339,7 +1483,7 @@ h2 {
 }
 .options button {
   padding: 4px 8px;
-  width: clamp(100px, 10vw, 140px);
+  width: clamp(110px, 10vw, 140px);
   font-size: clamp(1rem, 1.5vw, 1.5rem);
   border: none;
   border-radius: 5px;
@@ -1483,7 +1627,7 @@ h2 {
   }
 
   .options button {
-    font-size: clamp(1.1rem, 3vw, 1.5rem);
+    font-size: clamp(1rem, 3vw, 1.4rem);
     width: clamp(100px, 20vw, 130px);
     padding: 4px 8px;
   }
@@ -1531,7 +1675,7 @@ h2 {
     transform: box-shadow 0.3s ease;
   }
 }
-`, "",{"version":3,"sources":["webpack://./src/style.css"],"names":[],"mappings":"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","sourcesContent":["/* reset  */\n*,\n*::before,\n*::after {\n  box-sizing: border-box;\n}\n* {\n  margin: 0;\n}\nbody {\n  line-height: 1.5;\n  -webkit-font-smoothing: antialiased;\n}\nimg,\npicture,\nvideo,\ncanvas,\nsvg {\n  display: block;\n  max-width: 100%;\n}\ninput,\nbutton,\ntextarea,\nselect {\n  font: inherit;\n}\np,\nh1,\nh2,\nh3,\nh4,\nh5,\nh6 {\n  overflow-wrap: break-word;\n}\n\n/* general  */\n\n:root {\n  --land: #001f3f;\n  --bg-color: #e0e5ec;\n  --white: #fff;\n}\n\n:root {\n  --shadow-color: 227deg 19% 34%;\n  --shadow-elevation-low: 0.3px 0.5px 0.7px hsl(var(--shadow-color) / 0.34),\n    0.4px 0.8px 1px -1.2px hsl(var(--shadow-color) / 0.34),\n    1px 2px 2.5px -2.5px hsl(var(--shadow-color) / 0.34);\n  --shadow-elevation-medium: 0.3px 0.5px 0.7px hsl(var(--shadow-color) / 0.36),\n    0.8px 1.6px 2px -0.8px hsl(var(--shadow-color) / 0.36),\n    2.1px 4.1px 5.2px -1.7px hsl(var(--shadow-color) / 0.36),\n    5px 10px 12.6px -2.5px hsl(var(--shadow-color) / 0.36);\n  --shadow-elevation-high: 0.3px 0.5px 0.7px hsl(var(--shadow-color) / 0.34),\n    1.5px 2.9px 3.7px -0.4px hsl(var(--shadow-color) / 0.34),\n    2.7px 5.4px 6.8px -0.7px hsl(var(--shadow-color) / 0.34),\n    4.5px 8.9px 11.2px -1.1px hsl(var(--shadow-color) / 0.34),\n    7.1px 14.3px 18px -1.4px hsl(var(--shadow-color) / 0.34),\n    11.2px 22.3px 28.1px -1.8px hsl(var(--shadow-color) / 0.34),\n    17px 33.9px 42.7px -2.1px hsl(var(--shadow-color) / 0.34),\n    25px 50px 62.9px -2.5px hsl(var(--shadow-color) / 0.34);\n}\n\nbody {\n  margin: 0;\n  padding: 0;\n  overflow-y: scroll;\n}\nbody::-webkit-scrollbar {\n  width: 12px;\n}\n\nbody::-webkit-scrollbar-track {\n  background: transparent;\n}\n\nbody::-webkit-scrollbar-thumb {\n  background: #888;\n  border-radius: 20px;\n}\n\nbody::-webkit-scrollbar-thumb:hover {\n  background: #555;\n}\n\nmain {\n  display: grid;\n  justify-items: center;\n  margin-bottom: var(--footer-height);\n}\n\nheader .logo {\n  width: clamp(150px, 20vw, 250px);\n}\n\n.headerWrapper {\n  width: 100%;\n  z-index: 1;\n  display: flex;\n  justify-content: center;\n  position: fixed;\n  top: 0;\n  height: var(--header-height);\n  background: white;\n}\n\nheader {\n  max-width: 1200px;\n  min-width: 400px;\n  width: 100%;\n  position: fixed;\n  height: max-content;\n  top: 0;\n  padding: 10px 20px;\n  border-bottom: 2px solid var(--bg-color);\n  background: white;\n}\n\n.intro p {\n  font-size: clamp(1rem, 1vw, 1.3rem);\n}\n.wiki-link {\n  /* text-decoration: none; */\n  cursor: pointer;\n  font-weight: 600;\n  color: #ff6b6b;\n}\n\n.wiki-link:hover {\n  text-decoration: none;\n}\n\n.container {\n  width: 100%;\n  max-width: 1200px;\n  min-width: 300px;\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 20px;\n  margin-top: var(--header-height);\n  margin-bottom: var(--footer-height);\n  /* background-color: var(--bg-color); */\n}\n\n.gameStatus {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  gap: 10px;\n  margin-top: 30px;\n  margin-bottom: 10px;\n  padding: 0 10px;\n  width: 100%;\n  width: var(--game-width);\n  min-width: 300px;\n}\n\nh2 {\n  font-size: clamp(1.5rem, 3vw, 1.8rem);\n}\n\n.gameLog {\n  display: flex;\n  flex-direction: column;\n  align-items: end;\n  font-size: clamp(1rem, 2vw, 1.3rem);\n  font-weight: 600;\n}\n\n.game {\n  display: flex;\n\n  gap: 50px;\n  padding: 0 10px;\n}\n\n/* gameboard  */\n\n.game-container {\n  width: 100%;\n  display: grid;\n  grid-template:\n    \".... col-indices \" 20px\n    \"row-indices board \" 1fr/ 20px 1fr;\n  gap: clamp(5px, 0.5vw, 10px);\n  padding: clamp(5px, 1.2vw, 20px);\n  border-radius: 15px;\n  position: relative;\n  background-color: var(--land);\n  box-shadow: var(--shadow-elevation-medium);\n}\n\n.row-indices {\n  grid-area: row-indices;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: space-around;\n}\n\n.index {\n  width: clamp(20px, 3vw, 45px);\n  height: clamp(20px, 3vw, 45px);\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  font-size: clamp(1rem, 1.5vw, 1.5rem);\n  color: var(--white);\n}\n\n.col-indices {\n  grid-area: col-indices;\n  display: flex;\n  justify-content: space-around;\n  align-items: center;\n}\n\n.board {\n  grid-area: board;\n  display: grid;\n  grid-template-columns: repeat(10, 1fr);\n  grid-template-rows: repeat(10, 1fr);\n  position: relative;\n  border-collapse: collapse;\n  background-color: var(--white);\n}\n\n.ship {\n  position: absolute;\n  will-change: transform;\n  transition: width 0.2s ease, height 0.2s ease;\n}\n\n.ship.ai-ship {\n  opacity: 0;\n  pointer-events: none;\n}\n.ship.ai-ship.sink {\n  opacity: 1;\n\n  pointer-events: auto;\n}\n\n.ship.sink {\n  fill: #000000;\n  filter: grayscale(100%);\n}\n\n.cell {\n  border: 1px solid #ccc;\n  position: relative;\n}\n\n.cell.miss::after {\n  content: \"\";\n  display: block;\n  width: 25%;\n  height: 25%;\n  background-color: slategray;\n  border-radius: 50%;\n  position: absolute;\n  top: 50%;\n  left: 50%;\n  transform: translate(-50%, -50%);\n}\n\n.cell.hit::before,\n.cell.hit::after {\n  content: \"\";\n  display: block;\n  width: 2px;\n  height: 100%;\n  background-color: var(--land);\n  border-radius: 50%;\n  position: absolute;\n  top: 50%;\n  left: 50%;\n  transform: translate(-50%, -50%);\n  z-index: 2;\n}\n\n.cell.hit::before {\n  transform: translate(-50%, -50%) rotate(45deg);\n}\n.cell.hit::after {\n  transform: translate(-50%, -50%) rotate(-45deg);\n}\n\n.human,\n.ai {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: clamp(10px, 1.5vw, 20px);\n}\n\n.player {\n  font-size: clamp(1.2rem, 2vw, 1.7rem);\n}\n.options {\n  justify-self: center;\n  align-self: flex-start;\n  align-items: center;\n  display: flex;\n  gap: clamp(10px, 1.5vw, 20px);\n}\n.options button {\n  padding: 4px 8px;\n  width: clamp(100px, 10vw, 140px);\n  font-size: clamp(1rem, 1.5vw, 1.5rem);\n  border: none;\n  border-radius: 5px;\n  background: #1e3d59;\n  color: white;\n  cursor: pointer;\n  position: relative;\n  display: inline-block;\n  outline: none;\n  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);\n}\n\n.options button::before,\n.options button::after {\n  content: \"\";\n  position: absolute;\n  height: 2px;\n  width: 0;\n  background: hotpink;\n  transition: width 0.3s ease;\n}\n\n.options button::before {\n  top: 0;\n  left: 0;\n}\n\n.options button::after {\n  bottom: 0;\n  right: 0;\n}\n\n.options button:hover {\n  box-shadow: 4px 4px 6px rgba(116, 125, 136, 0.5),\n    -4px -4px 6px rgba(255, 255, 255, 0.5);\n  background: transparent;\n  color: #001f3f;\n}\n\n.options button:hover::before,\n.options button:hover::after {\n  width: 100%;\n}\n\n.sound {\n  width: clamp(1.5rem, 3vw, 2.5rem);\n  cursor: pointer;\n}\n\n.game-control {\n  width: var(--game-width);\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 50px;\n\n  margin-bottom: var(--header-height);\n}\n\n.intro-log {\n  display: flex;\n  flex-direction: column;\n  gap: 10px;\n  padding: 0 10px;\n}\n\n.ship-log {\n  display: none;\n  /* display: flex; */\n  flex-direction: column;\n}\n\n/* modal  */\n.modal {\n  display: none;\n  position: fixed;\n  z-index: 3;\n  left: 0;\n  top: 0;\n  width: 100%;\n  height: 100%;\n  overflow: auto;\n  background-color: rgba(0, 0, 0, 0.4);\n}\n\n.modal-content {\n  background-color: #fefefe;\n  margin: auto;\n  padding: 20px;\n  border: 1px solid #888;\n  width: clamp(250px, 30vw, 330px);\n  border-radius: 10px;\n  position: absolute;\n  top: 50%;\n  left: 50%;\n  transform: translate(-50%, -50%);\n  display: grid;\n  justify-items: start;\n  gap: 10px;\n}\n\n#close-btn {\n  justify-self: flex-end;\n  font-size: 2rem;\n  line-height: 0.5;\n  cursor: pointer;\n  color: #1e3d59;\n}\n\n.modal-content h2 {\n  color: #1e3d59;\n}\n#playAgain {\n  padding: 3px 10px;\n  border: none;\n  border-radius: 5px;\n  font-size: clamp(1rem, 2vw, 1.3rem);\n  background: #1e3d59;\n  color: white;\n  cursor: pointer;\n  position: relative;\n  display: inline-block;\n  outline: none;\n  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);\n}\n\n/* media query  */\n\n@media only screen and (max-width: 800px) {\n  .game {\n    flex-direction: column;\n  }\n\n  .index {\n    width: clamp(20px, 8vw, 45px);\n    height: clamp(20px, 8vw, 45px);\n    font-size: clamp(1rem, 3vw, 1.5rem);\n    color: var(--white);\n  }\n  .player {\n    font-size: clamp(1.2rem, 5vw, 1.7rem);\n  }\n\n  .options button {\n    font-size: clamp(1.1rem, 3vw, 1.5rem);\n    width: clamp(100px, 20vw, 130px);\n    padding: 4px 8px;\n  }\n\n  .game-container {\n    padding: clamp(5px, 2vw, 20px);\n  }\n\n  .game-control {\n    grid-template-columns: 1fr;\n    gap: 20px;\n    margin-top: 30px;\n  }\n  .sound {\n    width: clamp(1.5rem, 4vw, 2.5rem);\n  }\n}\n\n@media only screen and (max-width: 500px) {\n  .gameStatus {\n    flex-direction: column;\n    margin-top: 20px;\n    margin-bottom: 0;\n  }\n\n  .gameLog {\n    align-self: flex-end;\n    order: 1;\n    line-height: 1;\n  }\n  .gameStatus h2 {\n    order: 2;\n  }\n}\n\n@media (hover: none) {\n  .options button::before,\n  .options button::after {\n    content: none;\n  }\n\n  .options button:focus {\n    box-shadow: 4px 4px 6px rgba(116, 125, 136, 0.5),\n      -4px -4px 6px rgba(255, 255, 255, 0.5);\n    transform: box-shadow 0.3s ease;\n  }\n}\n"],"sourceRoot":""}]);
+`, "",{"version":3,"sources":["webpack://./src/style.css"],"names":[],"mappings":"AAAA,WAAW;AACX;;;EAGE,sBAAsB;AACxB;AACA;EACE,SAAS;AACX;AACA;EACE,gBAAgB;EAChB,mCAAmC;AACrC;AACA;;;;;EAKE,cAAc;EACd,eAAe;AACjB;AACA;;;;EAIE,aAAa;AACf;AACA;;;;;;;EAOE,yBAAyB;AAC3B;;AAEA,aAAa;;AAEb;EACE,eAAe;EACf,mBAAmB;EACnB,aAAa;AACf;;AAEA;EACE,8BAA8B;EAC9B;;wDAEsD;EACtD;;;0DAGwD;EACxD;;;;;;;2DAOyD;AAC3D;;AAEA;EACE,SAAS;EACT,UAAU;EACV,kBAAkB;AACpB;AACA;EACE,WAAW;AACb;;AAEA;EACE,uBAAuB;AACzB;;AAEA;EACE,gBAAgB;EAChB,mBAAmB;AACrB;;AAEA;EACE,gBAAgB;AAClB;;AAEA;EACE,aAAa;EACb,qBAAqB;EACrB,mCAAmC;AACrC;;AAEA;EACE,gCAAgC;AAClC;;AAEA;EACE,WAAW;EACX,UAAU;EACV,aAAa;EACb,uBAAuB;EACvB,eAAe;EACf,MAAM;EACN,4BAA4B;EAC5B,iBAAiB;AACnB;;AAEA;EACE,iBAAiB;EACjB,gBAAgB;EAChB,WAAW;EACX,eAAe;EACf,mBAAmB;EACnB,MAAM;EACN,kBAAkB;EAClB,wCAAwC;EACxC,iBAAiB;AACnB;;AAEA;EACE,mCAAmC;AACrC;AACA;EACE,2BAA2B;EAC3B,eAAe;EACf,gBAAgB;EAChB,cAAc;AAChB;;AAEA;EACE,qBAAqB;AACvB;;AAEA;EACE,WAAW;EACX,iBAAiB;EACjB,gBAAgB;EAChB,OAAO;EACP,aAAa;EACb,sBAAsB;EACtB,mBAAmB;EACnB,SAAS;EACT,gCAAgC;EAChC,mCAAmC;EACnC,uCAAuC;AACzC;;AAEA;EACE,aAAa;EACb,8BAA8B;EAC9B,mBAAmB;EACnB,SAAS;EACT,gBAAgB;EAChB,mBAAmB;EACnB,eAAe;EACf,WAAW;EACX,wBAAwB;EACxB,gBAAgB;AAClB;;AAEA;EACE,qCAAqC;AACvC;;AAEA;EACE,aAAa;EACb,sBAAsB;EACtB,gBAAgB;EAChB,mCAAmC;EACnC,gBAAgB;AAClB;;AAEA;EACE,aAAa;;EAEb,SAAS;EACT,eAAe;AACjB;;AAEA,eAAe;;AAEf;EACE,WAAW;EACX,aAAa;EACb;;sCAEoC;EACpC,4BAA4B;EAC5B,gCAAgC;EAChC,mBAAmB;EACnB,kBAAkB;EAClB,6BAA6B;EAC7B,0CAA0C;AAC5C;;AAEA;EACE,sBAAsB;EACtB,aAAa;EACb,sBAAsB;EACtB,mBAAmB;EACnB,6BAA6B;AAC/B;;AAEA;EACE,6BAA6B;EAC7B,8BAA8B;EAC9B,aAAa;EACb,mBAAmB;EACnB,uBAAuB;EACvB,qCAAqC;EACrC,mBAAmB;AACrB;;AAEA;EACE,sBAAsB;EACtB,aAAa;EACb,6BAA6B;EAC7B,mBAAmB;AACrB;;AAEA;EACE,gBAAgB;EAChB,aAAa;EACb,sCAAsC;EACtC,mCAAmC;EACnC,kBAAkB;EAClB,yBAAyB;EACzB,8BAA8B;AAChC;;AAEA;EACE,kBAAkB;EAClB,sBAAsB;EACtB,6CAA6C;AAC/C;;AAEA;EACE,UAAU;EACV,oBAAoB;AACtB;AACA;EACE,UAAU;;EAEV,oBAAoB;AACtB;;AAEA;EACE,aAAa;EACb,uBAAuB;AACzB;;AAEA;EACE,sBAAsB;EACtB,kBAAkB;AACpB;;AAEA;EACE,WAAW;EACX,cAAc;EACd,UAAU;EACV,WAAW;EACX,2BAA2B;EAC3B,kBAAkB;EAClB,kBAAkB;EAClB,QAAQ;EACR,SAAS;EACT,gCAAgC;AAClC;;AAEA;;EAEE,WAAW;EACX,cAAc;EACd,UAAU;EACV,YAAY;EACZ,6BAA6B;EAC7B,kBAAkB;EAClB,kBAAkB;EAClB,QAAQ;EACR,SAAS;EACT,gCAAgC;EAChC,UAAU;AACZ;;AAEA;EACE,8CAA8C;AAChD;AACA;EACE,+CAA+C;AACjD;;AAEA;;EAEE,aAAa;EACb,sBAAsB;EACtB,mBAAmB;EACnB,6BAA6B;AAC/B;;AAEA;EACE,qCAAqC;AACvC;AACA;EACE,oBAAoB;EACpB,sBAAsB;EACtB,mBAAmB;EACnB,aAAa;EACb,6BAA6B;AAC/B;AACA;EACE,gBAAgB;EAChB,gCAAgC;EAChC,qCAAqC;EACrC,YAAY;EACZ,kBAAkB;EAClB,mBAAmB;EACnB,YAAY;EACZ,eAAe;EACf,kBAAkB;EAClB,qBAAqB;EACrB,aAAa;EACb,2CAA2C;AAC7C;;AAEA;;EAEE,WAAW;EACX,kBAAkB;EAClB,WAAW;EACX,QAAQ;EACR,mBAAmB;EACnB,2BAA2B;AAC7B;;AAEA;EACE,MAAM;EACN,OAAO;AACT;;AAEA;EACE,SAAS;EACT,QAAQ;AACV;;AAEA;EACE;0CACwC;EACxC,uBAAuB;EACvB,cAAc;AAChB;;AAEA;;EAEE,WAAW;AACb;;AAEA;EACE,iCAAiC;EACjC,eAAe;AACjB;;AAEA;EACE,wBAAwB;EACxB,aAAa;EACb,8BAA8B;EAC9B,SAAS;;EAET,mCAAmC;AACrC;;AAEA;EACE,aAAa;EACb,sBAAsB;EACtB,SAAS;EACT,eAAe;AACjB;;AAEA;EACE,aAAa;EACb,mBAAmB;EACnB,sBAAsB;AACxB;;AAEA,WAAW;AACX;EACE,aAAa;EACb,eAAe;EACf,UAAU;EACV,OAAO;EACP,MAAM;EACN,WAAW;EACX,YAAY;EACZ,cAAc;EACd,oCAAoC;AACtC;;AAEA;EACE,yBAAyB;EACzB,YAAY;EACZ,aAAa;EACb,sBAAsB;EACtB,gCAAgC;EAChC,mBAAmB;EACnB,kBAAkB;EAClB,QAAQ;EACR,SAAS;EACT,gCAAgC;EAChC,aAAa;EACb,oBAAoB;EACpB,SAAS;AACX;;AAEA;EACE,sBAAsB;EACtB,eAAe;EACf,gBAAgB;EAChB,eAAe;EACf,cAAc;AAChB;;AAEA;EACE,cAAc;AAChB;AACA;EACE,iBAAiB;EACjB,YAAY;EACZ,kBAAkB;EAClB,mCAAmC;EACnC,mBAAmB;EACnB,YAAY;EACZ,eAAe;EACf,kBAAkB;EAClB,qBAAqB;EACrB,aAAa;EACb,2CAA2C;AAC7C;;AAEA,iBAAiB;;AAEjB;EACE;IACE,sBAAsB;EACxB;;EAEA;IACE,6BAA6B;IAC7B,8BAA8B;IAC9B,mCAAmC;IACnC,mBAAmB;EACrB;EACA;IACE,qCAAqC;EACvC;;EAEA;IACE,mCAAmC;IACnC,gCAAgC;IAChC,gBAAgB;EAClB;;EAEA;IACE,8BAA8B;EAChC;;EAEA;IACE,0BAA0B;IAC1B,SAAS;IACT,gBAAgB;EAClB;EACA;IACE,iCAAiC;EACnC;AACF;;AAEA;EACE;IACE,sBAAsB;IACtB,gBAAgB;IAChB,gBAAgB;EAClB;;EAEA;IACE,oBAAoB;IACpB,QAAQ;IACR,cAAc;EAChB;EACA;IACE,QAAQ;EACV;AACF;;AAEA;EACE;;IAEE,aAAa;EACf;;EAEA;IACE;4CACwC;IACxC,+BAA+B;EACjC;AACF","sourcesContent":["/* reset  */\n*,\n*::before,\n*::after {\n  box-sizing: border-box;\n}\n* {\n  margin: 0;\n}\nbody {\n  line-height: 1.5;\n  -webkit-font-smoothing: antialiased;\n}\nimg,\npicture,\nvideo,\ncanvas,\nsvg {\n  display: block;\n  max-width: 100%;\n}\ninput,\nbutton,\ntextarea,\nselect {\n  font: inherit;\n}\np,\nh1,\nh2,\nh3,\nh4,\nh5,\nh6 {\n  overflow-wrap: break-word;\n}\n\n/* general  */\n\n:root {\n  --land: #001f3f;\n  --bg-color: #e0e5ec;\n  --white: #fff;\n}\n\n:root {\n  --shadow-color: 227deg 19% 34%;\n  --shadow-elevation-low: 0.3px 0.5px 0.7px hsl(var(--shadow-color) / 0.34),\n    0.4px 0.8px 1px -1.2px hsl(var(--shadow-color) / 0.34),\n    1px 2px 2.5px -2.5px hsl(var(--shadow-color) / 0.34);\n  --shadow-elevation-medium: 0.3px 0.5px 0.7px hsl(var(--shadow-color) / 0.36),\n    0.8px 1.6px 2px -0.8px hsl(var(--shadow-color) / 0.36),\n    2.1px 4.1px 5.2px -1.7px hsl(var(--shadow-color) / 0.36),\n    5px 10px 12.6px -2.5px hsl(var(--shadow-color) / 0.36);\n  --shadow-elevation-high: 0.3px 0.5px 0.7px hsl(var(--shadow-color) / 0.34),\n    1.5px 2.9px 3.7px -0.4px hsl(var(--shadow-color) / 0.34),\n    2.7px 5.4px 6.8px -0.7px hsl(var(--shadow-color) / 0.34),\n    4.5px 8.9px 11.2px -1.1px hsl(var(--shadow-color) / 0.34),\n    7.1px 14.3px 18px -1.4px hsl(var(--shadow-color) / 0.34),\n    11.2px 22.3px 28.1px -1.8px hsl(var(--shadow-color) / 0.34),\n    17px 33.9px 42.7px -2.1px hsl(var(--shadow-color) / 0.34),\n    25px 50px 62.9px -2.5px hsl(var(--shadow-color) / 0.34);\n}\n\nbody {\n  margin: 0;\n  padding: 0;\n  overflow-y: scroll;\n}\nbody::-webkit-scrollbar {\n  width: 12px;\n}\n\nbody::-webkit-scrollbar-track {\n  background: transparent;\n}\n\nbody::-webkit-scrollbar-thumb {\n  background: #888;\n  border-radius: 20px;\n}\n\nbody::-webkit-scrollbar-thumb:hover {\n  background: #555;\n}\n\nmain {\n  display: grid;\n  justify-items: center;\n  margin-bottom: var(--footer-height);\n}\n\nheader .logo {\n  width: clamp(150px, 20vw, 250px);\n}\n\n.headerWrapper {\n  width: 100%;\n  z-index: 1;\n  display: flex;\n  justify-content: center;\n  position: fixed;\n  top: 0;\n  height: var(--header-height);\n  background: white;\n}\n\nheader {\n  max-width: 1200px;\n  min-width: 400px;\n  width: 100%;\n  position: fixed;\n  height: max-content;\n  top: 0;\n  padding: 10px 20px;\n  border-bottom: 2px solid var(--bg-color);\n  background: white;\n}\n\n.intro p {\n  font-size: clamp(1rem, 1vw, 1.3rem);\n}\n.wiki-link {\n  /* text-decoration: none; */\n  cursor: pointer;\n  font-weight: 600;\n  color: #ff6b6b;\n}\n\n.wiki-link:hover {\n  text-decoration: none;\n}\n\n.container {\n  width: 100%;\n  max-width: 1200px;\n  min-width: 300px;\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 20px;\n  margin-top: var(--header-height);\n  margin-bottom: var(--footer-height);\n  /* background-color: var(--bg-color); */\n}\n\n.gameStatus {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  gap: 10px;\n  margin-top: 30px;\n  margin-bottom: 10px;\n  padding: 0 10px;\n  width: 100%;\n  width: var(--game-width);\n  min-width: 300px;\n}\n\nh2 {\n  font-size: clamp(1.5rem, 3vw, 1.8rem);\n}\n\n.gameLog {\n  display: flex;\n  flex-direction: column;\n  align-items: end;\n  font-size: clamp(1rem, 2vw, 1.3rem);\n  font-weight: 600;\n}\n\n.game {\n  display: flex;\n\n  gap: 50px;\n  padding: 0 10px;\n}\n\n/* gameboard  */\n\n.game-container {\n  width: 100%;\n  display: grid;\n  grid-template:\n    \".... col-indices \" 20px\n    \"row-indices board \" 1fr/ 20px 1fr;\n  gap: clamp(5px, 0.5vw, 10px);\n  padding: clamp(5px, 1.2vw, 20px);\n  border-radius: 15px;\n  position: relative;\n  background-color: var(--land);\n  box-shadow: var(--shadow-elevation-medium);\n}\n\n.row-indices {\n  grid-area: row-indices;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: space-around;\n}\n\n.index {\n  width: clamp(20px, 3vw, 45px);\n  height: clamp(20px, 3vw, 45px);\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  font-size: clamp(1rem, 1.5vw, 1.5rem);\n  color: var(--white);\n}\n\n.col-indices {\n  grid-area: col-indices;\n  display: flex;\n  justify-content: space-around;\n  align-items: center;\n}\n\n.board {\n  grid-area: board;\n  display: grid;\n  grid-template-columns: repeat(10, 1fr);\n  grid-template-rows: repeat(10, 1fr);\n  position: relative;\n  border-collapse: collapse;\n  background-color: var(--white);\n}\n\n.ship {\n  position: absolute;\n  will-change: transform;\n  transition: width 0.2s ease, height 0.2s ease;\n}\n\n.ship.ai-ship {\n  opacity: 0;\n  pointer-events: none;\n}\n.ship.ai-ship.sink {\n  opacity: 1;\n\n  pointer-events: auto;\n}\n\n.ship.sink {\n  fill: #000000;\n  filter: grayscale(100%);\n}\n\n.cell {\n  border: 1px solid #ccc;\n  position: relative;\n}\n\n.cell.miss::after {\n  content: \"\";\n  display: block;\n  width: 25%;\n  height: 25%;\n  background-color: slategray;\n  border-radius: 50%;\n  position: absolute;\n  top: 50%;\n  left: 50%;\n  transform: translate(-50%, -50%);\n}\n\n.cell.hit::before,\n.cell.hit::after {\n  content: \"\";\n  display: block;\n  width: 2px;\n  height: 100%;\n  background-color: var(--land);\n  border-radius: 50%;\n  position: absolute;\n  top: 50%;\n  left: 50%;\n  transform: translate(-50%, -50%);\n  z-index: 2;\n}\n\n.cell.hit::before {\n  transform: translate(-50%, -50%) rotate(45deg);\n}\n.cell.hit::after {\n  transform: translate(-50%, -50%) rotate(-45deg);\n}\n\n.human,\n.ai {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: clamp(10px, 1.5vw, 20px);\n}\n\n.player {\n  font-size: clamp(1.2rem, 2vw, 1.7rem);\n}\n.options {\n  justify-self: center;\n  align-self: flex-start;\n  align-items: center;\n  display: flex;\n  gap: clamp(10px, 1.5vw, 20px);\n}\n.options button {\n  padding: 4px 8px;\n  width: clamp(110px, 10vw, 140px);\n  font-size: clamp(1rem, 1.5vw, 1.5rem);\n  border: none;\n  border-radius: 5px;\n  background: #1e3d59;\n  color: white;\n  cursor: pointer;\n  position: relative;\n  display: inline-block;\n  outline: none;\n  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);\n}\n\n.options button::before,\n.options button::after {\n  content: \"\";\n  position: absolute;\n  height: 2px;\n  width: 0;\n  background: hotpink;\n  transition: width 0.3s ease;\n}\n\n.options button::before {\n  top: 0;\n  left: 0;\n}\n\n.options button::after {\n  bottom: 0;\n  right: 0;\n}\n\n.options button:hover {\n  box-shadow: 4px 4px 6px rgba(116, 125, 136, 0.5),\n    -4px -4px 6px rgba(255, 255, 255, 0.5);\n  background: transparent;\n  color: #001f3f;\n}\n\n.options button:hover::before,\n.options button:hover::after {\n  width: 100%;\n}\n\n.sound {\n  width: clamp(1.5rem, 3vw, 2.5rem);\n  cursor: pointer;\n}\n\n.game-control {\n  width: var(--game-width);\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 50px;\n\n  margin-bottom: var(--header-height);\n}\n\n.intro-log {\n  display: flex;\n  flex-direction: column;\n  gap: 10px;\n  padding: 0 10px;\n}\n\n.ship-log {\n  display: none;\n  /* display: flex; */\n  flex-direction: column;\n}\n\n/* modal  */\n.modal {\n  display: none;\n  position: fixed;\n  z-index: 3;\n  left: 0;\n  top: 0;\n  width: 100%;\n  height: 100%;\n  overflow: auto;\n  background-color: rgba(0, 0, 0, 0.4);\n}\n\n.modal-content {\n  background-color: #fefefe;\n  margin: auto;\n  padding: 20px;\n  border: 1px solid #888;\n  width: clamp(250px, 30vw, 330px);\n  border-radius: 10px;\n  position: absolute;\n  top: 50%;\n  left: 50%;\n  transform: translate(-50%, -50%);\n  display: grid;\n  justify-items: start;\n  gap: 10px;\n}\n\n#close-btn {\n  justify-self: flex-end;\n  font-size: 2rem;\n  line-height: 0.5;\n  cursor: pointer;\n  color: #1e3d59;\n}\n\n.modal-content h2 {\n  color: #1e3d59;\n}\n#playAgain {\n  padding: 3px 10px;\n  border: none;\n  border-radius: 5px;\n  font-size: clamp(1rem, 2vw, 1.3rem);\n  background: #1e3d59;\n  color: white;\n  cursor: pointer;\n  position: relative;\n  display: inline-block;\n  outline: none;\n  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);\n}\n\n/* media query  */\n\n@media only screen and (max-width: 800px) {\n  .game {\n    flex-direction: column;\n  }\n\n  .index {\n    width: clamp(20px, 8vw, 45px);\n    height: clamp(20px, 8vw, 45px);\n    font-size: clamp(1rem, 3vw, 1.5rem);\n    color: var(--white);\n  }\n  .player {\n    font-size: clamp(1.2rem, 5vw, 1.7rem);\n  }\n\n  .options button {\n    font-size: clamp(1rem, 3vw, 1.4rem);\n    width: clamp(100px, 20vw, 130px);\n    padding: 4px 8px;\n  }\n\n  .game-container {\n    padding: clamp(5px, 2vw, 20px);\n  }\n\n  .game-control {\n    grid-template-columns: 1fr;\n    gap: 20px;\n    margin-top: 30px;\n  }\n  .sound {\n    width: clamp(1.5rem, 4vw, 2.5rem);\n  }\n}\n\n@media only screen and (max-width: 500px) {\n  .gameStatus {\n    flex-direction: column;\n    margin-top: 20px;\n    margin-bottom: 0;\n  }\n\n  .gameLog {\n    align-self: flex-end;\n    order: 1;\n    line-height: 1;\n  }\n  .gameStatus h2 {\n    order: 2;\n  }\n}\n\n@media (hover: none) {\n  .options button::before,\n  .options button::after {\n    content: none;\n  }\n\n  .options button:focus {\n    box-shadow: 4px 4px 6px rgba(116, 125, 136, 0.5),\n      -4px -4px 6px rgba(255, 255, 255, 0.5);\n    transform: box-shadow 0.3s ease;\n  }\n}\n"],"sourceRoot":""}]);
 // Exports
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (___CSS_LOADER_EXPORT___);
 
@@ -2268,6 +2412,10 @@ var updateContainerMargin = function updateContainerMargin() {
   document.documentElement.style.setProperty("--game-width", "".concat(gameWidth, "px"));
 };
 window.addEventListener("load", function () {
+  var loadingScreen = document.getElementById("loading-screen");
+  loadingScreen.style.display = "none";
+});
+window.addEventListener("load", function () {
   updateContainerMargin();
   (0,_domModule__WEBPACK_IMPORTED_MODULE_1__.adjustShipSizeAndPositions)();
 });
@@ -2275,6 +2423,17 @@ window.addEventListener("resize", function () {
   updateContainerMargin();
   (0,_domModule__WEBPACK_IMPORTED_MODULE_1__.adjustShipSizeAndPositions)();
 });
+var introText = select(".intro p");
+var link = create("a");
+link.classList.add("wiki-link");
+if ("ontouchstart" in window) {
+  introText.textContent = 'Double tap and grab to move the ship. Long press on a ship to rotate. Tap "randomize" for auto-placement.';
+} else {
+  introText.textContent = 'Drag and drop to position the ship. Double-click to rotate. Click "randomize" for auto-placement.';
+}
+link.textContent = " Learn more about the game here.";
+link.href = "https://en.wikipedia.org/wiki/Battleship_(game)";
+introText.appendChild(link);
 var gameLog = JSON.parse(localStorage.getItem("gameLog")) || {
   humanWins: 0,
   aiWins: 0,
@@ -2427,6 +2586,7 @@ startButton.addEventListener("click", function () {
     startButton.dataset.action = "reset";
     var boardDiv = select(".human .board");
     (0,_domModule__WEBPACK_IMPORTED_MODULE_1__.removeDragAndDropEvents)(boardDiv);
+    (0,_domModule__WEBPACK_IMPORTED_MODULE_1__.removeTouchEvents)(boardDiv);
     randomizeButton.disabled = true;
     startButton.textContent = "Reset";
     startGame();
@@ -2456,4 +2616,4 @@ updateGameLog();
 
 /******/ })()
 ;
-//# sourceMappingURL=bundle644d207dfd1513656793.js.map
+//# sourceMappingURL=bundle3c7c90c9b198bb919dfe.js.map
