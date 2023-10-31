@@ -2,6 +2,7 @@ import "./style.css";
 import {
   adjustShipSizeAndPositions,
   removeDragAndDropEvents,
+  removeTouchEvents,
 } from "./domModule";
 import gameLoop from "./gameloop";
 import missEffect from "./assets/miss.mp3";
@@ -26,6 +27,10 @@ const updateContainerMargin = () => {
 };
 
 window.addEventListener("load", () => {
+  const loadingScreen = document.getElementById("loading-screen");
+  loadingScreen.style.display = "none";
+});
+window.addEventListener("load", () => {
   updateContainerMargin();
   adjustShipSizeAndPositions();
 });
@@ -33,6 +38,21 @@ window.addEventListener("resize", () => {
   updateContainerMargin();
   adjustShipSizeAndPositions();
 });
+
+const introText = select(".intro p");
+const link = create("a");
+link.classList.add("wiki-link");
+if ("ontouchstart" in window) {
+  introText.textContent =
+    'Double tap and grab to move the ship. Long press on a ship to rotate. Tap "randomize" for auto-placement. \n';
+} else {
+  introText.textContent =
+    'Drag and drop to position the ship. Double-click to rotate. Click "randomize" for auto-placement. \n';
+}
+
+link.textContent = "Learn more about the game here.";
+link.href = "https://en.wikipedia.org/wiki/Battleship_(game)";
+introText.appendChild(link);
 
 const gameLog = JSON.parse(localStorage.getItem("gameLog")) || {
   humanWins: 0,
@@ -222,6 +242,7 @@ startButton.addEventListener("click", () => {
     startButton.dataset.action = "reset";
     const boardDiv = select(".human .board");
     removeDragAndDropEvents(boardDiv);
+    removeTouchEvents(boardDiv);
     randomizeButton.disabled = true;
     startButton.textContent = "Reset";
     startGame();

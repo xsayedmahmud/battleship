@@ -309,7 +309,7 @@ h2 {
 }
 .options button {
   padding: 4px 8px;
-  width: clamp(100px, 10vw, 140px);
+  width: clamp(110px, 10vw, 140px);
   font-size: clamp(1rem, 1.5vw, 1.5rem);
   border: none;
   border-radius: 5px;
@@ -453,7 +453,7 @@ h2 {
   }
 
   .options button {
-    font-size: clamp(1.1rem, 3vw, 1.5rem);
+    font-size: clamp(1rem, 3vw, 1.4rem);
     width: clamp(100px, 20vw, 130px);
     padding: 4px 8px;
   }

@@ -11,6 +11,18 @@
     />
   </head>
   <body>
+    <div
+      id="loading-screen"
+      style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #fff;
+        z-index: 9999;
+      "
+    ></div>
     <main>
       <div class="headerWrapper">
         <header>
@@ -45,13 +57,7 @@
           <div class="intro-log">
             <div class="intro">
               <p>
-                Drag and drop to position the ship. Double-click to rotate.
-                Click "randomize" for auto-placement.
-                <a
-                  class="wiki-link"
-                  href="https://en.wikipedia.org/wiki/Battleship_(game)"
-                  >Learn more about the game here.</a
-                >
+                <!-- <a class="wiki-link"></a> -->
               </p>
             </div>
             <div class="ship-log">
