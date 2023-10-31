@@ -216,6 +216,12 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _assets_destroyer_3_h_svg__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./assets/destroyer-3-h.svg */ "./src/assets/destroyer-3-h.svg");
 /* harmony import */ var _assets_submarine_3_h_svg__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./assets/submarine-3-h.svg */ "./src/assets/submarine-3-h.svg");
 /* harmony import */ var _assets_patrolboat_2_h_svg__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./assets/patrolboat-2-h.svg */ "./src/assets/patrolboat-2-h.svg");
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
+function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
+function _defineProperty(obj, key, value) { key = _toPropertyKey(key); if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+function _toPropertyKey(arg) { var key = _toPrimitive(arg, "string"); return _typeof(key) === "symbol" ? key : String(key); }
+function _toPrimitive(input, hint) { if (_typeof(input) !== "object" || input === null) return input; var prim = input[Symbol.toPrimitive]; if (prim !== undefined) { var res = prim.call(input, hint || "default"); if (_typeof(res) !== "object") return res; throw new TypeError("@@toPrimitive must return a primitive value."); } return (hint === "string" ? String : Number)(input); }
 function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
@@ -343,6 +349,8 @@ var createGameContainer = function createGameContainer(gameboard, container, ren
   });
   adjustShipSizeAndPositions();
 };
+var currentTouchData = null;
+var touching = false;
 var handleShipRotation = function handleShipRotation(e, humanGameBoard) {
   var shipImage = e.target;
   var _shipImage$dataset = shipImage.dataset,
@@ -376,6 +384,10 @@ var handleShipRotation = function handleShipRotation(e, humanGameBoard) {
       shipImage.src = newOrientation === "horizontal" ? shipImagesHorizontal["".concat(ship.name).concat(ship.length, "h")] : shipImagesVertical["".concat(ship.name).concat(ship.length, "v")];
       humanGameBoard.placeShipDragAndDrop(ship, validPositions[0], newOrientation);
       adjustShipSizeAndPositions();
+      if (e.touches) {
+        currentTouchData = null;
+        touching = false;
+      }
       return;
     }
   }
@@ -386,18 +398,21 @@ var handleShipRotation = function handleShipRotation(e, humanGameBoard) {
     shipImage.style.border = "";
   }, 300);
 };
-var currentDragData = null;
-var dragging = false;
+// ---------------------------------------------------------------------------------
+// let currentTouchData = null;
+// let touching = false;
+
 var handleTouchStart = function handleTouchStart(e) {
   var ship = e.target;
   var touch = e.touches[0];
-  dragging = true;
+  touching = true;
+  ship.style.border = "2px solid green";
   var rect = ship.getBoundingClientRect();
   var offsetX = touch.clientX - rect.left;
   var offsetY = touch.clientY - rect.top;
   var grabPointX = Math.floor(offsetX / rect.width * ship.dataset.length);
   var grabPointY = Math.floor(offsetY / rect.height * ship.dataset.length);
-  currentDragData = {
+  currentTouchData = {
     shipName: ship.dataset.name,
     shipLength: ship.dataset.length,
     orientation: ship.dataset.orientation,
@@ -408,13 +423,109 @@ var handleTouchStart = function handleTouchStart(e) {
   };
   var allShips = selectAll(".ship");
   setTimeout(function () {
-    if (dragging) {
+    if (touching) {
       allShips.forEach(function (shipElm) {
         shipElm.style.pointerEvents = "none";
       });
     }
   }, 0);
 };
+var handleTouchMove = function handleTouchMove(e, humanGameBoard) {
+  if (currentTouchData === null) {
+    return;
+  }
+  e.preventDefault();
+  selectAll(".cell").forEach(function (cell) {
+    cell.style.backgroundColor = "";
+  });
+  var touchX = e.touches[0].clientX;
+  var touchY = e.touches[0].clientY;
+  var cellElement = document.elementFromPoint(touchX, touchY);
+  var cellsToHighlight = [];
+  var isValid = false;
+  if (cellElement && cellElement.classList.contains("cell")) {
+    var _cellElement$dataset$ = cellElement.dataset.pos.split(",").map(Number),
+      _cellElement$dataset$2 = _slicedToArray(_cellElement$dataset$, 2),
+      hoverX = _cellElement$dataset$2[0],
+      hoverY = _cellElement$dataset$2[1];
+    var touchData = currentTouchData || {};
+    var shipLength = touchData.shipLength,
+      orientation = touchData.orientation,
+      grabPointX = touchData.grabPointX,
+      grabPointY = touchData.grabPointY,
+      startPos = touchData.startPos,
+      endPos = touchData.endPos;
+    for (var i = 0; i < shipLength; i++) {
+      var dataPos = void 0;
+      if (orientation === "horizontal") {
+        dataPos = "".concat(hoverX, ",").concat(hoverY - grabPointX + i);
+      } else {
+        dataPos = "".concat(hoverX - grabPointY + i, ",").concat(hoverY);
+      }
+      var cell = select("[data-pos=\"".concat(dataPos, "\"]"));
+      if (cell) {
+        cellsToHighlight.push(cell);
+      }
+    }
+    isValid = humanGameBoard.isValidDragPlacement(cellsToHighlight.filter(Boolean).map(function (cell) {
+      return cell.dataset.pos;
+    }), startPos, endPos, orientation);
+    cellsToHighlight.forEach(function (cell) {
+      if (cell) {
+        cell.style.backgroundColor = isValid ? "green" : "red";
+      }
+    });
+  }
+  currentTouchData = _objectSpread(_objectSpread({}, currentTouchData), {}, {
+    cellsToHighlight: cellsToHighlight || [],
+    isValid: isValid || false
+  });
+};
+var handleTouchEnd = function handleTouchEnd(e, humanGameBoard) {
+  var touchData = currentTouchData || {};
+  var orientation = touchData.orientation,
+    startPos = touchData.startPos,
+    isValid = touchData.isValid,
+    cellsToHighlight = touchData.cellsToHighlight;
+  if (!startPos) {
+    return;
+  }
+  var _startPos$split$map3 = startPos.split(",").map(Number),
+    _startPos$split$map4 = _slicedToArray(_startPos$split$map3, 2),
+    startX = _startPos$split$map4[0],
+    startY = _startPos$split$map4[1];
+  var ship = humanGameBoard.getShipAt([startX, startY]);
+  if (ship) {
+    var shipElement = select("[data-name=\"".concat(ship.name, "\"]"));
+    shipElement.style.border = "";
+  }
+  var touchX = e.changedTouches[0].clientX;
+  var touchY = e.changedTouches[0].clientY;
+  var cellElement = document.elementFromPoint(touchX, touchY);
+  if (cellElement && cellElement.classList.contains("cell")) {
+    if (isValid) {
+      var _cellsToHighlight$0$d = cellsToHighlight[0].dataset.pos.split(",").map(Number),
+        _cellsToHighlight$0$d2 = _slicedToArray(_cellsToHighlight$0$d, 2),
+        x = _cellsToHighlight$0$d2[0],
+        y = _cellsToHighlight$0$d2[1];
+      var success = humanGameBoard.placeShipDragAndDrop(ship, [x, y], orientation);
+      if (success) {
+        adjustShipSizeAndPositions();
+      } else {
+        console.log("Failed to place ship at ".concat(x, ", ").concat(y));
+      }
+    }
+  }
+  touching = false;
+  var allShips = selectAll(".ship");
+  allShips.forEach(function (shipElm) {
+    shipElm.style.pointerEvents = "";
+  });
+};
+
+// ---------------------------------------------------------------------------------
+var currentDragData = null;
+var dragging = false;
 var handleDragStart = function handleDragStart(e) {
   var ship = e.target;
   dragging = true;
@@ -440,55 +551,6 @@ var handleDragStart = function handleDragStart(e) {
       });
     }
   }, 0);
-};
-var touchData;
-var handleTouchMove = function handleTouchMove(e, humanGameBoard) {
-  e.preventDefault();
-  selectAll(".cell").forEach(function (cell) {
-    cell.style.backgroundColor = "";
-  });
-  var touchX = e.touches[0].clientX;
-  var touchY = e.touches[0].clientY;
-  var cellElement = document.elementFromPoint(touchX, touchY);
-  var cellsToHighlight = [];
-  var isValid = false;
-  if (cellElement && cellElement.classList.contains("cell")) {
-    var _cellElement$dataset$ = cellElement.dataset.pos.split(",").map(Number),
-      _cellElement$dataset$2 = _slicedToArray(_cellElement$dataset$, 2),
-      hoverX = _cellElement$dataset$2[0],
-      hoverY = _cellElement$dataset$2[1];
-    var draggedData = currentDragData || {};
-    var shipLength = draggedData.shipLength,
-      orientation = draggedData.orientation,
-      grabPointX = draggedData.grabPointX,
-      grabPointY = draggedData.grabPointY,
-      startPos = draggedData.startPos,
-      endPos = draggedData.endPos;
-    for (var i = 0; i < shipLength; i++) {
-      var dataPos = void 0;
-      if (orientation === "horizontal") {
-        dataPos = "".concat(hoverX, ",").concat(hoverY - grabPointX + i);
-      } else {
-        dataPos = "".concat(hoverX - grabPointY + i, ",").concat(hoverY);
-      }
-      var cell = select("[data-pos=\"".concat(dataPos, "\"]"));
-      if (cell) {
-        cellsToHighlight.push(cell);
-      }
-    }
-    isValid = humanGameBoard.isValidDragPlacement(cellsToHighlight.filter(Boolean).map(function (cell) {
-      return cell.dataset.pos;
-    }), startPos, endPos, orientation);
-    cellsToHighlight.forEach(function (cell) {
-      if (cell) {
-        cell.style.backgroundColor = isValid ? "green" : "red";
-      }
-    });
-  }
-  touchData = {
-    cellsToHighlight: cellsToHighlight || [],
-    isValid: isValid || false
-  };
 };
 var handleDragOver = function handleDragOver(e, humanGameBoard) {
   e.preventDefault();
@@ -532,42 +594,6 @@ var handleDragOver = function handleDragOver(e, humanGameBoard) {
     isValid: isValid
   };
 };
-var handleTouchEnd = function handleTouchEnd(e, humanGameBoard) {
-  var draggedData = currentDragData || {};
-  var orientation = draggedData.orientation,
-    startPos = draggedData.startPos;
-  var _startPos$split$map3 = startPos.split(",").map(Number),
-    _startPos$split$map4 = _slicedToArray(_startPos$split$map3, 2),
-    startX = _startPos$split$map4[0],
-    startY = _startPos$split$map4[1];
-  var ship = humanGameBoard.getShipAt([startX, startY]);
-  var touchX = e.changedTouches[0].clientX;
-  var touchY = e.changedTouches[0].clientY;
-  var cellElement = document.elementFromPoint(touchX, touchY);
-  if (cellElement && cellElement.classList.contains("cell")) {
-    if (touchData) {
-      if (touchData.isValid) {
-        var _touchData$cellsToHig = touchData.cellsToHighlight[0].dataset.pos.split(",").map(Number),
-          _touchData$cellsToHig2 = _slicedToArray(_touchData$cellsToHig, 2),
-          x = _touchData$cellsToHig2[0],
-          y = _touchData$cellsToHig2[1];
-        var success = humanGameBoard.placeShipDragAndDrop(ship, [x, y], orientation);
-        if (success) {
-          adjustShipSizeAndPositions();
-        } else {
-          console.log("Failed to place ship at ".concat(x, ", ").concat(y));
-        }
-      }
-    }
-  }
-  clearCellColors();
-  dragging = false;
-  var allShips = selectAll(".ship");
-  allShips.forEach(function (shipElm) {
-    shipElm.style.pointerEvents = "";
-  });
-  currentDragData = null;
-};
 var handleDrop = function handleDrop(e, humanGameBoard) {
   e.preventDefault();
   var draggedData = currentDragData || {};
@@ -610,6 +636,54 @@ var handleDragEnd = function handleDragEnd(e) {
 var handleDragLeave = function handleDragLeave(e) {
   clearCellColors();
 };
+
+// -----------------------------------------------------------------------------
+
+var touchEventHandlers = {
+  handleTouchStartEvent: null,
+  handleTouchMoveEvent: null,
+  handleTouchEndEvent: null
+};
+
+// let lastTouchTime = 0;
+var addTouchEvents = function addTouchEvents(boardDiv, humanGameBoard) {
+  var lastTouchTime = 0;
+  var touchStartTimeout = null;
+  touchEventHandlers.handleTouchStartEvent = function (e) {
+    var now = new Date().getTime();
+    var timeSince = now - lastTouchTime;
+    if (timeSince < 600 && timeSince > 0 && e.target.classList.contains("ship")) {
+      clearTimeout(touchStartTimeout);
+      handleShipRotation(e, humanGameBoard);
+    } else if (e.target.classList.contains("ship")) {
+      touchStartTimeout = setTimeout(function () {
+        handleTouchStart(e);
+      }, 600);
+    }
+    lastTouchTime = now;
+  };
+  touchEventHandlers.handleTouchMoveEvent = function (e) {
+    if (e.target.classList.contains("cell")) {
+      handleTouchMove(e, humanGameBoard);
+    }
+  };
+  touchEventHandlers.handleTouchEndEvent = function (e) {
+    if (e.target.classList.contains("cell")) {
+      handleTouchEnd(e, humanGameBoard);
+      clearCellColors();
+    }
+  };
+  boardDiv.addEventListener("touchstart", touchEventHandlers.handleTouchStartEvent);
+  boardDiv.addEventListener("touchmove", touchEventHandlers.handleTouchMoveEvent);
+  boardDiv.addEventListener("touchend", touchEventHandlers.handleTouchEndEvent);
+};
+var removeTouchEvents = function removeTouchEvents(boardDiv) {
+  boardDiv.removeEventListener("touchstart", touchEventHandlers.handleTouchStartEvent);
+  boardDiv.removeEventListener("touchmove", touchEventHandlers.handleTouchMoveEvent);
+  boardDiv.removeEventListener("touchend", touchEventHandlers.handleTouchEndEvent);
+};
+
+// -------------------------------------------------------------------------
 var eventHandlers = {
   handleDragOverEvent: null,
   handleDropEvent: null,
@@ -630,31 +704,6 @@ var eventHandlers = {
     }
   }
 };
-var touchEventHandlers = {
-  handleTouchStartEvent: null,
-  handleTouchMoveEvent: null,
-  handleTouchEndEvent: null
-};
-var addTouchEvents = function addTouchEvents(boardDiv, humanGameBoard) {
-  touchEventHandlers.handleTouchStartEvent = function (e) {
-    if (e.target.classList.contains("ship")) {
-      handleTouchStart(e, humanGameBoard);
-    }
-  };
-  touchEventHandlers.handleTouchMoveEvent = function (e) {
-    if (e.target.classList.contains("cell")) {
-      handleTouchMove(e, humanGameBoard);
-    }
-  };
-  touchEventHandlers.handleTouchEndEvent = function (e) {
-    if (e.target.classList.contains("cell")) {
-      handleTouchEnd(e, humanGameBoard);
-    }
-  };
-  boardDiv.addEventListener("touchstart", touchEventHandlers.handleTouchStartEvent);
-  boardDiv.addEventListener("touchmove", touchEventHandlers.handleTouchMoveEvent);
-  boardDiv.addEventListener("touchend", touchEventHandlers.handleTouchEndEvent);
-};
 var addDragAndDropEvents = function addDragAndDropEvents(boardDiv, humanGameBoard) {
   eventHandlers.handleDragOverEvent = function (e) {
     if (e.target.classList.contains("cell")) {
@@ -670,7 +719,6 @@ var addDragAndDropEvents = function addDragAndDropEvents(boardDiv, humanGameBoar
   eventHandlers.handleDoubleClick = function (e) {
     if (e.target.classList.contains("ship")) {
       handleShipRotation(e, humanGameBoard);
-      currentDragData = null;
     }
   };
   boardDiv.addEventListener("dragstart", eventHandlers.handleDragStartEvent);
@@ -688,19 +736,17 @@ var removeDragAndDropEvents = function removeDragAndDropEvents(boardDiv) {
   boardDiv.removeEventListener("dragend", eventHandlers.handleDragEndEvent);
   boardDiv.removeEventListener("dblclick", eventHandlers.handleDoubleClick);
 };
-var removeTouchEvents = function removeTouchEvents(boardDiv) {
-  boardDiv.removeEventListener("touchstart", touchEventHandlers.handleTouchStartEvent);
-  boardDiv.removeEventListener("touchmove", touchEventHandlers.handleTouchMoveEvent);
-  boardDiv.removeEventListener("touchend", touchEventHandlers.handleTouchEndEvent);
-};
 var renderBoard = function renderBoard(humanContainer, aiContainer, humanGameBoard, aiGameBoard) {
   var renderedShipsHuman = [];
   var renderedShipsAI = [];
   createGameContainer(humanGameBoard, humanContainer, renderedShipsHuman);
   createGameContainer(aiGameBoard, aiContainer, renderedShipsAI, true);
   var humanBoardDiv = select(".human .board");
-  addDragAndDropEvents(humanBoardDiv, humanGameBoard);
-  addTouchEvents(humanBoardDiv, humanGameBoard);
+  if (window.matchMedia("(pointer: coarse)").matches) {
+    addTouchEvents(humanBoardDiv, humanGameBoard);
+  } else {
+    addDragAndDropEvents(humanBoardDiv, humanGameBoard);
+  }
 };
 
 
@@ -2424,7 +2470,7 @@ var introText = select(".intro p");
 var link = create("a");
 link.classList.add("wiki-link");
 if ("ontouchstart" in window) {
-  introText.textContent = 'Double tap and grab to move the ship. Long press on a ship to rotate. Tap "randomize" for auto-placement. \n';
+  introText.textContent = 'Click once to select the ship, then drag to reposition it. Double-click to rotate. Tap "randomize" for auto-placement. \n';
 } else {
   introText.textContent = 'Drag and drop to position the ship. Double-click to rotate. Click "randomize" for auto-placement. \n';
 }
@@ -2613,4 +2659,4 @@ updateGameLog();
 
 /******/ })()
 ;
-//# sourceMappingURL=bundled2a820ab1805d5fdae7d.js.map
+//# sourceMappingURL=bundleabb4d6dbbd614c4269a2.js.map
