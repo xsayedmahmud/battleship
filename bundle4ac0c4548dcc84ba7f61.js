@@ -388,7 +388,7 @@ var handleShipRotation = function handleShipRotation(e, humanGameBoard) {
 };
 var currentDragData = null;
 var dragging = false;
-var handleTouchStart = function handleTouchStart(e, humanGameBoard) {
+var handleTouchStart = function handleTouchStart(e) {
   var ship = e.target;
   var touch = e.touches[0];
   dragging = true;
@@ -414,12 +414,6 @@ var handleTouchStart = function handleTouchStart(e, humanGameBoard) {
       });
     }
   }, 0);
-  var longPressTimer = setTimeout(function () {
-    handleShipRotation(e, humanGameBoard);
-  }, 1000);
-  ship.addEventListener("touchend", function () {
-    clearTimeout(longPressTimer);
-  });
 };
 var handleDragStart = function handleDragStart(e) {
   var ship = e.target;
@@ -572,6 +566,7 @@ var handleTouchEnd = function handleTouchEnd(e, humanGameBoard) {
   allShips.forEach(function (shipElm) {
     shipElm.style.pointerEvents = "";
   });
+  currentDragData = null;
 };
 var handleDrop = function handleDrop(e, humanGameBoard) {
   e.preventDefault();
@@ -642,7 +637,7 @@ var touchEventHandlers = {
 var addTouchEvents = function addTouchEvents(boardDiv, humanGameBoard) {
   touchEventHandlers.handleTouchStartEvent = function (e) {
     if (e.target.classList.contains("ship")) {
-      handleTouchStart(e, humanGameBoard);
+      handleTouchStart(e);
     }
   };
   touchEventHandlers.handleTouchMoveEvent = function (e) {
@@ -2616,4 +2611,4 @@ updateGameLog();
 
 /******/ })()
 ;
-//# sourceMappingURL=bundle3c7c90c9b198bb919dfe.js.map
+//# sourceMappingURL=bundle4ac0c4548dcc84ba7f61.js.map
