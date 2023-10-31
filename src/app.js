@@ -44,7 +44,7 @@ const link = create("a");
 link.classList.add("wiki-link");
 if ("ontouchstart" in window) {
   introText.textContent =
-    'Double tap and grab to move the ship. Long press on a ship to rotate. Tap "randomize" for auto-placement. \n';
+    'Click once to select the ship, then drag to reposition it. Double-click to rotate. Tap "randomize" for auto-placement. \n';
 } else {
   introText.textContent =
     'Drag and drop to position the ship. Double-click to rotate. Click "randomize" for auto-placement. \n';

@@ -136,6 +136,8 @@ const createGameContainer = (
   });
   adjustShipSizeAndPositions();
 };
+let currentTouchData = null;
+let touching = false;
 
 const handleShipRotation = (e, humanGameBoard) => {
   const shipImage = e.target;
@@ -175,6 +177,11 @@ const handleShipRotation = (e, humanGameBoard) => {
         newOrientation
       );
       adjustShipSizeAndPositions();
+
+      if (e.touches) {
+        currentTouchData = null;
+        touching = false;
+      }
       return;
     }
   }
@@ -187,15 +194,16 @@ const handleShipRotation = (e, humanGameBoard) => {
     shipImage.style.border = "";
   }, 300);
 };
-
-let currentDragData = null;
-let dragging = false;
+// ---------------------------------------------------------------------------------
+// let currentTouchData = null;
+// let touching = false;
 
 const handleTouchStart = (e) => {
   const ship = e.target;
   const touch = e.touches[0];
-  dragging = true;
+  touching = true;
 
+  ship.style.border = "2px solid green";
   const rect = ship.getBoundingClientRect();
 
   const offsetX = touch.clientX - rect.left;
@@ -204,7 +212,7 @@ const handleTouchStart = (e) => {
   const grabPointX = Math.floor((offsetX / rect.width) * ship.dataset.length);
   const grabPointY = Math.floor((offsetY / rect.height) * ship.dataset.length);
 
-  currentDragData = {
+  currentTouchData = {
     shipName: ship.dataset.name,
     shipLength: ship.dataset.length,
     orientation: ship.dataset.orientation,
@@ -216,13 +224,124 @@ const handleTouchStart = (e) => {
 
   const allShips = selectAll(".ship");
   setTimeout(() => {
-    if (dragging) {
+    if (touching) {
       allShips.forEach((shipElm) => {
         shipElm.style.pointerEvents = "none";
       });
     }
   }, 0);
 };
+
+const handleTouchMove = (e, humanGameBoard) => {
+  if (currentTouchData === null) {
+    return;
+  }
+  e.preventDefault();
+  selectAll(".cell").forEach((cell) => {
+    cell.style.backgroundColor = "";
+  });
+
+  const touchX = e.touches[0].clientX;
+  const touchY = e.touches[0].clientY;
+  const cellElement = document.elementFromPoint(touchX, touchY);
+  const cellsToHighlight = [];
+  let isValid = false;
+
+  if (cellElement && cellElement.classList.contains("cell")) {
+    const [hoverX, hoverY] = cellElement.dataset.pos.split(",").map(Number);
+    const touchData = currentTouchData || {};
+    const {
+      shipLength,
+      orientation,
+      grabPointX,
+      grabPointY,
+      startPos,
+      endPos,
+    } = touchData;
+
+    for (let i = 0; i < shipLength; i++) {
+      let dataPos;
+      if (orientation === "horizontal") {
+        dataPos = `${hoverX},${hoverY - grabPointX + i}`;
+      } else {
+        dataPos = `${hoverX - grabPointY + i},${hoverY}`;
+      }
+      const cell = select(`[data-pos="${dataPos}"]`);
+      if (cell) {
+        cellsToHighlight.push(cell);
+      }
+    }
+
+    isValid = humanGameBoard.isValidDragPlacement(
+      cellsToHighlight.filter(Boolean).map((cell) => cell.dataset.pos),
+      startPos,
+      endPos,
+      orientation
+    );
+
+    cellsToHighlight.forEach((cell) => {
+      if (cell) {
+        cell.style.backgroundColor = isValid ? "green" : "red";
+      }
+    });
+  }
+
+  currentTouchData = {
+    ...currentTouchData,
+    cellsToHighlight: cellsToHighlight || [],
+    isValid: isValid || false,
+  };
+};
+
+const handleTouchEnd = (e, humanGameBoard) => {
+  const touchData = currentTouchData || {};
+
+  const { orientation, startPos, isValid, cellsToHighlight } = touchData;
+
+  if (!startPos) {
+    return;
+  }
+
+  const [startX, startY] = startPos.split(",").map(Number);
+  const ship = humanGameBoard.getShipAt([startX, startY]);
+  if (ship) {
+    const shipElement = select(`[data-name="${ship.name}"]`);
+    shipElement.style.border = "";
+  }
+
+  const touchX = e.changedTouches[0].clientX;
+  const touchY = e.changedTouches[0].clientY;
+  const cellElement = document.elementFromPoint(touchX, touchY);
+
+  if (cellElement && cellElement.classList.contains("cell")) {
+    if (isValid) {
+      const [x, y] = cellsToHighlight[0].dataset.pos.split(",").map(Number);
+
+      const success = humanGameBoard.placeShipDragAndDrop(
+        ship,
+        [x, y],
+        orientation
+      );
+
+      if (success) {
+        adjustShipSizeAndPositions();
+      } else {
+        console.log(`Failed to place ship at ${x}, ${y}`);
+      }
+    }
+  }
+
+  touching = false;
+
+  const allShips = selectAll(".ship");
+  allShips.forEach((shipElm) => {
+    shipElm.style.pointerEvents = "";
+  });
+};
+
+// ---------------------------------------------------------------------------------
+let currentDragData = null;
+let dragging = false;
 
 const handleDragStart = (e) => {
   const ship = e.target;
@@ -253,64 +372,6 @@ const handleDragStart = (e) => {
       });
     }
   }, 0);
-};
-
-let touchData;
-const handleTouchMove = (e, humanGameBoard) => {
-  e.preventDefault();
-  selectAll(".cell").forEach((cell) => {
-    cell.style.backgroundColor = "";
-  });
-
-  const touchX = e.touches[0].clientX;
-  const touchY = e.touches[0].clientY;
-  const cellElement = document.elementFromPoint(touchX, touchY);
-  const cellsToHighlight = [];
-  let isValid = false;
-
-  if (cellElement && cellElement.classList.contains("cell")) {
-    const [hoverX, hoverY] = cellElement.dataset.pos.split(",").map(Number);
-    const draggedData = currentDragData || {};
-    const {
-      shipLength,
-      orientation,
-      grabPointX,
-      grabPointY,
-      startPos,
-      endPos,
-    } = draggedData;
-
-    for (let i = 0; i < shipLength; i++) {
-      let dataPos;
-      if (orientation === "horizontal") {
-        dataPos = `${hoverX},${hoverY - grabPointX + i}`;
-      } else {
-        dataPos = `${hoverX - grabPointY + i},${hoverY}`;
-      }
-      const cell = select(`[data-pos="${dataPos}"]`);
-      if (cell) {
-        cellsToHighlight.push(cell);
-      }
-    }
-
-    isValid = humanGameBoard.isValidDragPlacement(
-      cellsToHighlight.filter(Boolean).map((cell) => cell.dataset.pos),
-      startPos,
-      endPos,
-      orientation
-    );
-
-    cellsToHighlight.forEach((cell) => {
-      if (cell) {
-        cell.style.backgroundColor = isValid ? "green" : "red";
-      }
-    });
-  }
-
-  touchData = {
-    cellsToHighlight: cellsToHighlight || [],
-    isValid: isValid || false,
-  };
 };
 
 const handleDragOver = (e, humanGameBoard) => {
@@ -356,49 +417,6 @@ const handleDragOver = (e, humanGameBoard) => {
     cellsToHighlight,
     isValid,
   };
-};
-
-const handleTouchEnd = (e, humanGameBoard) => {
-  const draggedData = currentDragData || {};
-  const { orientation, startPos } = draggedData;
-
-  const [startX, startY] = startPos.split(",").map(Number);
-  const ship = humanGameBoard.getShipAt([startX, startY]);
-
-  const touchX = e.changedTouches[0].clientX;
-  const touchY = e.changedTouches[0].clientY;
-  const cellElement = document.elementFromPoint(touchX, touchY);
-
-  if (cellElement && cellElement.classList.contains("cell")) {
-    if (touchData) {
-      if (touchData.isValid) {
-        const [x, y] = touchData.cellsToHighlight[0].dataset.pos
-          .split(",")
-          .map(Number);
-
-        const success = humanGameBoard.placeShipDragAndDrop(
-          ship,
-          [x, y],
-          orientation
-        );
-
-        if (success) {
-          adjustShipSizeAndPositions();
-        } else {
-          console.log(`Failed to place ship at ${x}, ${y}`);
-        }
-      }
-    }
-  }
-
-  clearCellColors();
-  dragging = false;
-
-  const allShips = selectAll(".ship");
-  allShips.forEach((shipElm) => {
-    shipElm.style.pointerEvents = "";
-  });
-  currentDragData = null;
 };
 
 const handleDrop = (e, humanGameBoard) => {
@@ -456,6 +474,81 @@ const handleDragLeave = (e) => {
   clearCellColors();
 };
 
+// -----------------------------------------------------------------------------
+
+const touchEventHandlers = {
+  handleTouchStartEvent: null,
+  handleTouchMoveEvent: null,
+  handleTouchEndEvent: null,
+};
+
+// let lastTouchTime = 0;
+const addTouchEvents = (boardDiv, humanGameBoard) => {
+  let lastTouchTime = 0;
+  let touchStartTimeout = null;
+
+  touchEventHandlers.handleTouchStartEvent = (e) => {
+    const now = new Date().getTime();
+    const timeSince = now - lastTouchTime;
+
+    if (
+      timeSince < 600 &&
+      timeSince > 0 &&
+      e.target.classList.contains("ship")
+    ) {
+      clearTimeout(touchStartTimeout);
+      handleShipRotation(e, humanGameBoard);
+    } else if (e.target.classList.contains("ship")) {
+      touchStartTimeout = setTimeout(() => {
+        handleTouchStart(e);
+      }, 600);
+    }
+
+    lastTouchTime = now;
+  };
+
+  touchEventHandlers.handleTouchMoveEvent = (e) => {
+    if (e.target.classList.contains("cell")) {
+      handleTouchMove(e, humanGameBoard);
+    }
+  };
+
+  touchEventHandlers.handleTouchEndEvent = (e) => {
+    if (e.target.classList.contains("cell")) {
+      handleTouchEnd(e, humanGameBoard);
+      clearCellColors();
+    }
+  };
+
+  boardDiv.addEventListener(
+    "touchstart",
+    touchEventHandlers.handleTouchStartEvent
+  );
+
+  boardDiv.addEventListener(
+    "touchmove",
+    touchEventHandlers.handleTouchMoveEvent
+  );
+
+  boardDiv.addEventListener("touchend", touchEventHandlers.handleTouchEndEvent);
+};
+
+const removeTouchEvents = (boardDiv) => {
+  boardDiv.removeEventListener(
+    "touchstart",
+    touchEventHandlers.handleTouchStartEvent
+  );
+  boardDiv.removeEventListener(
+    "touchmove",
+    touchEventHandlers.handleTouchMoveEvent
+  );
+  boardDiv.removeEventListener(
+    "touchend",
+    touchEventHandlers.handleTouchEndEvent
+  );
+};
+
+// -------------------------------------------------------------------------
 const eventHandlers = {
   handleDragOverEvent: null,
   handleDropEvent: null,
@@ -480,44 +573,6 @@ const eventHandlers = {
   },
 };
 
-const touchEventHandlers = {
-  handleTouchStartEvent: null,
-  handleTouchMoveEvent: null,
-  handleTouchEndEvent: null,
-};
-
-const addTouchEvents = (boardDiv, humanGameBoard) => {
-  touchEventHandlers.handleTouchStartEvent = (e) => {
-    if (e.target.classList.contains("ship")) {
-      handleTouchStart(e, humanGameBoard);
-    }
-  };
-
-  touchEventHandlers.handleTouchMoveEvent = (e) => {
-    if (e.target.classList.contains("cell")) {
-      handleTouchMove(e, humanGameBoard);
-    }
-  };
-
-  touchEventHandlers.handleTouchEndEvent = (e) => {
-    if (e.target.classList.contains("cell")) {
-      handleTouchEnd(e, humanGameBoard);
-    }
-  };
-
-  boardDiv.addEventListener(
-    "touchstart",
-    touchEventHandlers.handleTouchStartEvent
-  );
-
-  boardDiv.addEventListener(
-    "touchmove",
-    touchEventHandlers.handleTouchMoveEvent
-  );
-
-  boardDiv.addEventListener("touchend", touchEventHandlers.handleTouchEndEvent);
-};
-
 const addDragAndDropEvents = (boardDiv, humanGameBoard) => {
   eventHandlers.handleDragOverEvent = (e) => {
     if (e.target.classList.contains("cell")) {
@@ -535,7 +590,6 @@ const addDragAndDropEvents = (boardDiv, humanGameBoard) => {
   eventHandlers.handleDoubleClick = (e) => {
     if (e.target.classList.contains("ship")) {
       handleShipRotation(e, humanGameBoard);
-      currentDragData = null;
     }
   };
 
@@ -556,21 +610,6 @@ const removeDragAndDropEvents = (boardDiv) => {
   boardDiv.removeEventListener("dblclick", eventHandlers.handleDoubleClick);
 };
 
-const removeTouchEvents = (boardDiv) => {
-  boardDiv.removeEventListener(
-    "touchstart",
-    touchEventHandlers.handleTouchStartEvent
-  );
-  boardDiv.removeEventListener(
-    "touchmove",
-    touchEventHandlers.handleTouchMoveEvent
-  );
-  boardDiv.removeEventListener(
-    "touchend",
-    touchEventHandlers.handleTouchEndEvent
-  );
-};
-
 const renderBoard = (
   humanContainer,
   aiContainer,
@@ -585,8 +624,12 @@ const renderBoard = (
   createGameContainer(aiGameBoard, aiContainer, renderedShipsAI, true);
 
   const humanBoardDiv = select(".human .board");
-  addDragAndDropEvents(humanBoardDiv, humanGameBoard);
-  addTouchEvents(humanBoardDiv, humanGameBoard);
+
+  if (window.matchMedia("(pointer: coarse)").matches) {
+    addTouchEvents(humanBoardDiv, humanGameBoard);
+  } else {
+    addDragAndDropEvents(humanBoardDiv, humanGameBoard);
+  }
 };
 
 export {
