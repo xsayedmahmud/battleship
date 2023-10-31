@@ -388,7 +388,7 @@ var handleShipRotation = function handleShipRotation(e, humanGameBoard) {
 };
 var currentDragData = null;
 var dragging = false;
-var handleTouchStart = function handleTouchStart(e) {
+var handleTouchStart = function handleTouchStart(e, humanGameBoard) {
   var ship = e.target;
   var touch = e.touches[0];
   dragging = true;
@@ -414,6 +414,12 @@ var handleTouchStart = function handleTouchStart(e) {
       });
     }
   }, 0);
+  var longPressTimer = setTimeout(function () {
+    handleShipRotation(e, humanGameBoard);
+  }, 1000);
+  ship.addEventListener("touchend", function () {
+    clearTimeout(longPressTimer);
+  });
 };
 var handleDragStart = function handleDragStart(e) {
   var ship = e.target;
@@ -566,7 +572,6 @@ var handleTouchEnd = function handleTouchEnd(e, humanGameBoard) {
   allShips.forEach(function (shipElm) {
     shipElm.style.pointerEvents = "";
   });
-  currentDragData = null;
 };
 var handleDrop = function handleDrop(e, humanGameBoard) {
   e.preventDefault();
@@ -634,49 +639,54 @@ var touchEventHandlers = {
   handleTouchMoveEvent: null,
   handleTouchEndEvent: null
 };
+var isTouchDevice = ("ontouchstart" in window);
 var addTouchEvents = function addTouchEvents(boardDiv, humanGameBoard) {
-  touchEventHandlers.handleTouchStartEvent = function (e) {
-    if (e.target.classList.contains("ship")) {
-      handleTouchStart(e);
-    }
-  };
-  touchEventHandlers.handleTouchMoveEvent = function (e) {
-    if (e.target.classList.contains("cell")) {
-      handleTouchMove(e, humanGameBoard);
-    }
-  };
-  touchEventHandlers.handleTouchEndEvent = function (e) {
-    if (e.target.classList.contains("cell")) {
-      handleTouchEnd(e, humanGameBoard);
-    }
-  };
-  boardDiv.addEventListener("touchstart", touchEventHandlers.handleTouchStartEvent);
-  boardDiv.addEventListener("touchmove", touchEventHandlers.handleTouchMoveEvent);
-  boardDiv.addEventListener("touchend", touchEventHandlers.handleTouchEndEvent);
+  if (isTouchDevice) {
+    touchEventHandlers.handleTouchStartEvent = function (e) {
+      if (e.target.classList.contains("ship")) {
+        handleTouchStart(e, humanGameBoard);
+      }
+    };
+    touchEventHandlers.handleTouchMoveEvent = function (e) {
+      if (e.target.classList.contains("cell")) {
+        handleTouchMove(e, humanGameBoard);
+      }
+    };
+    touchEventHandlers.handleTouchEndEvent = function (e) {
+      if (e.target.classList.contains("cell")) {
+        handleTouchEnd(e, humanGameBoard);
+      }
+    };
+    boardDiv.addEventListener("touchstart", touchEventHandlers.handleTouchStartEvent);
+    boardDiv.addEventListener("touchmove", touchEventHandlers.handleTouchMoveEvent);
+    boardDiv.addEventListener("touchend", touchEventHandlers.handleTouchEndEvent);
+  }
 };
 var addDragAndDropEvents = function addDragAndDropEvents(boardDiv, humanGameBoard) {
-  eventHandlers.handleDragOverEvent = function (e) {
-    if (e.target.classList.contains("cell")) {
-      handleDragOver(e, humanGameBoard);
-    }
-  };
-  eventHandlers.handleDropEvent = function (e) {
-    if (e.target.classList.contains("cell")) {
-      handleDrop(e, humanGameBoard);
-      clearCellColors();
-    }
-  };
-  eventHandlers.handleDoubleClick = function (e) {
-    if (e.target.classList.contains("ship")) {
-      handleShipRotation(e, humanGameBoard);
-    }
-  };
-  boardDiv.addEventListener("dragstart", eventHandlers.handleDragStartEvent);
-  boardDiv.addEventListener("dragover", eventHandlers.handleDragOverEvent);
-  boardDiv.addEventListener("dragleave", eventHandlers.handleDragLeaveEvent);
-  boardDiv.addEventListener("drop", eventHandlers.handleDropEvent);
-  boardDiv.addEventListener("dragend", eventHandlers.handleDragEndEvent);
-  boardDiv.addEventListener("dblclick", eventHandlers.handleDoubleClick);
+  if (!isTouchDevice) {
+    eventHandlers.handleDragOverEvent = function (e) {
+      if (e.target.classList.contains("cell")) {
+        handleDragOver(e, humanGameBoard);
+      }
+    };
+    eventHandlers.handleDropEvent = function (e) {
+      if (e.target.classList.contains("cell")) {
+        handleDrop(e, humanGameBoard);
+        clearCellColors();
+      }
+    };
+    eventHandlers.handleDoubleClick = function (e) {
+      if (e.target.classList.contains("ship")) {
+        handleShipRotation(e, humanGameBoard);
+      }
+    };
+    boardDiv.addEventListener("dragstart", eventHandlers.handleDragStartEvent);
+    boardDiv.addEventListener("dragover", eventHandlers.handleDragOverEvent);
+    boardDiv.addEventListener("dragleave", eventHandlers.handleDragLeaveEvent);
+    boardDiv.addEventListener("drop", eventHandlers.handleDropEvent);
+    boardDiv.addEventListener("dragend", eventHandlers.handleDragEndEvent);
+    boardDiv.addEventListener("dblclick", eventHandlers.handleDoubleClick);
+  }
 };
 var removeDragAndDropEvents = function removeDragAndDropEvents(boardDiv) {
   boardDiv.removeEventListener("dragstart", eventHandlers.handleDragStartEvent);
@@ -2422,11 +2432,11 @@ var introText = select(".intro p");
 var link = create("a");
 link.classList.add("wiki-link");
 if ("ontouchstart" in window) {
-  introText.textContent = 'Double tap and grab to move the ship. Long press on a ship to rotate. Tap "randomize" for auto-placement.';
+  introText.textContent = 'Double tap and grab to move the ship. Long press on a ship to rotate. Tap "randomize" for auto-placement. ';
 } else {
-  introText.textContent = 'Drag and drop to position the ship. Double-click to rotate. Click "randomize" for auto-placement.';
+  introText.textContent = 'Drag and drop to position the ship. Double-click to rotate. Click "randomize" for auto-placement. ';
 }
-link.textContent = " Learn more about the game here.";
+link.textContent = "Learn more about the game here.";
 link.href = "https://en.wikipedia.org/wiki/Battleship_(game)";
 introText.appendChild(link);
 var gameLog = JSON.parse(localStorage.getItem("gameLog")) || {
@@ -2611,4 +2621,4 @@ updateGameLog();
 
 /******/ })()
 ;
-//# sourceMappingURL=bundle4ac0c4548dcc84ba7f61.js.map
+//# sourceMappingURL=bundle1fdf4ea3cb8a9858f0fe.js.map
